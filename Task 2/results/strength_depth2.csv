@@ -1,0 +1,6 @@
+player,opponent,games,wins,draws,losses,score_pct,mean_cycles,stalled
+New controller,Previous version,240,109,52,79,56.25,21.19,1
+New controller,Rusher,240,140,29,71,64.38,17.49,0
+New controller,Hunter,240,176,47,17,83.12,17.71,0
+New controller,Turret,240,227,12,1,97.08,20.48,0
+New controller,Dodger,240,142,29,69,65.21,17.55,0

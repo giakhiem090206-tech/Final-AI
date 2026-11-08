@@ -1,0 +1,2 @@
+player,opponent,games,wins,draws,losses,score_pct,mean_cycles,stalled
+New controller,Previous version,240,92,65,83,51.88,26.41,7

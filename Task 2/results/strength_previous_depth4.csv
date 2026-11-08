@@ -1,0 +1,5 @@
+player,opponent,games,wins,draws,losses,score_pct,mean_cycles,stalled
+Previous version,Rusher,240,142,44,54,68.33,17.00,0
+Previous version,Hunter,240,173,63,4,85.21,19.46,2
+Previous version,Turret,240,209,29,2,93.12,35.10,28
+Previous version,Dodger,240,142,46,52,68.75,17.23,0

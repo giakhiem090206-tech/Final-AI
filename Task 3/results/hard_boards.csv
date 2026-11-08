@@ -1,0 +1,25 @@
+size,configuration,boards,solved,ms_median,ms_mean,backtrack_mean,restarts_mean
+13,fc / mrv+degree / ascending,24,18,8.91,2509.63,270878.50,0
+13,fc / dom/wdeg / ascending,24,22,10.65,1158.32,83166.88,0
+13,mac / static / ascending,24,22,27.19,873.23,29530.79,0
+13,mac / mrv+degree / ascending,24,20,33.63,1708.08,79650,0
+13,mac / mrv+degree / lcv,24,21,33.34,1299.44,47910.88,0
+13,mac / dom/wdeg / ascending,24,23,27.79,498.42,3983.25,0
+13,mac / dom/wdeg / lcv,24,23,29.92,764.03,15157.21,0
+13,mac / dom/wdeg / ascending / restarts,24,24,30.23,34.84,19.71,0.17
+16,fc / mrv+degree / ascending,24,9,10000.03,6628.23,471700.92,0
+16,fc / dom/wdeg / ascending,24,17,49.12,3401.65,173299.04,0
+16,mac / static / ascending,24,23,44.34,1300.34,76474.50,0
+16,mac / mrv+degree / ascending,24,18,68.41,2569.61,91946.96,0
+16,mac / mrv+degree / lcv,24,17,79.28,3245.59,87413.29,0
+16,mac / dom/wdeg / ascending,24,23,57.50,1317.44,18337.79,0
+16,mac / dom/wdeg / lcv,24,21,62.85,1435.78,12582.75,0
+16,mac / dom/wdeg / ascending / restarts,24,24,51.69,74.78,114.83,0.54
+20,fc / mrv+degree / ascending,24,3,10000.05,8757.35,428823.08,0
+20,fc / dom/wdeg / ascending,24,13,4305.86,5121.15,174956,0
+20,mac / static / ascending,24,14,219.89,4283.47,217896.46,0
+20,mac / mrv+degree / ascending,24,9,10000.06,6543.19,156273.33,0
+20,mac / mrv+degree / lcv,24,9,10000.05,6387.44,155260.79,0
+20,mac / dom/wdeg / ascending,24,17,434.33,3441.67,28129.88,0
+20,mac / dom/wdeg / lcv,24,17,242.53,3309.71,30156.71,0
+20,mac / dom/wdeg / ascending / restarts,24,24,134.72,235.23,423.21,2.08

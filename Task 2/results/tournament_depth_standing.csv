@@ -1,0 +1,6 @@
+player,games,wins,draws,losses,score_pct
+Heuristic Minimax,64,56,0,8,87.50
+Heuristic Alpha-Beta,64,56,0,8,87.50
+Minimax,64,0,32,32,25.00
+Alpha-Beta,64,0,32,32,25.00
+Random,64,0,32,32,25.00

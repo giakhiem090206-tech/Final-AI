@@ -1,0 +1,11 @@
+player,opponent,games,wins,draws,losses,mean_cycles
+Minimax,Alpha-Beta,16,0,16,0,120
+Minimax,Heuristic Minimax,16,0,0,16,20.94
+Minimax,Heuristic Alpha-Beta,16,0,0,16,20.94
+Minimax,Random,16,0,16,0,120
+Alpha-Beta,Heuristic Minimax,16,0,0,16,20.94
+Alpha-Beta,Heuristic Alpha-Beta,16,0,0,16,20.94
+Alpha-Beta,Random,16,0,16,0,120
+Heuristic Minimax,Heuristic Alpha-Beta,16,8,0,8,23.50
+Heuristic Minimax,Random,16,16,0,0,19.44
+Heuristic Alpha-Beta,Random,16,16,0,0,19.44

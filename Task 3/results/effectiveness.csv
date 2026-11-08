@@ -1,0 +1,19 @@
+puzzle,configuration,status,median_ms,assignments,branch_points,backtracks,revisions,digits_pruned,max_depth,valid
+Example (5x5),none / static / ascending,solved,5.52,1132,1132,1120,0,0,12,True
+Example (5x5),fc / static / ascending,solved,0.38,33,8,21,60,144,12,True
+Example (5x5),fc / mrv / ascending,solved,0.34,13,2,1,34,101,12,True
+Example (5x5),fc / mrv+degree / ascending,solved,0.37,13,2,1,34,101,12,True
+Example (5x5),fc / mrv+degree / lcv,solved,0.42,12,2,0,32,94,12,True
+Example (5x5),fc / dom/wdeg / ascending,solved,0.35,14,3,2,34,104,12,True
+Example (5x5),mac / static / ascending,solved,0.50,12,0,0,43,96,12,True
+Example (5x5),mac / mrv+degree / lcv,solved,0.52,12,0,0,43,96,12,True
+Example (5x5),mac / dom/wdeg / ascending,solved,0.49,12,0,0,43,96,12,True
+Complex (9x9),none / static / ascending,solved,7.85,1436,1436,1388,0,0,48,True
+Complex (9x9),fc / static / ascending,solved,1.67,133,29,85,262,610,48,True
+Complex (9x9),fc / mrv / ascending,solved,1.66,96,16,48,214,551,48,True
+Complex (9x9),fc / mrv+degree / ascending,solved,1.75,79,11,31,179,473,48,True
+Complex (9x9),fc / mrv+degree / lcv,solved,2.38,86,11,38,196,499,48,True
+Complex (9x9),fc / dom/wdeg / ascending,solved,3.89,326,80,278,634,1198,48,True
+Complex (9x9),mac / static / ascending,solved,2.07,48,0,0,190,384,48,True
+Complex (9x9),mac / mrv+degree / lcv,solved,2.51,48,0,0,190,384,48,True
+Complex (9x9),mac / dom/wdeg / ascending,solved,2.56,48,0,0,190,384,48,True

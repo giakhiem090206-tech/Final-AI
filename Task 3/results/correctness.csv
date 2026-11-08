@@ -1,0 +1,11 @@
+check,puzzle,result
+independent checker finds no broken rule,Example (5x5),True
+number of solutions (exhaustive search),Example (5x5),1
+all configurations give the same solution,Example (5x5),True
+search state fully restored after exhaustive search,Example (5x5),True
+boards with one clue raised are reported unsatisfiable,Example (5x5),4 of 4
+independent checker finds no broken rule,Complex (9x9),True
+number of solutions (exhaustive search),Complex (9x9),1
+all configurations give the same solution,Complex (9x9),True
+search state fully restored after exhaustive search,Complex (9x9),True
+boards with one clue raised are reported unsatisfiable,Complex (9x9),14 of 14

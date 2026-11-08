@@ -1,0 +1,11 @@
+depth_cycles,configuration,total_ms,total_nodes,total_evaluations,nodes_vs_plain,time_vs_plain,same_root_values
+4,Heuristic Alpha-Beta,861.46,180684,110650,1.00,1.00,True
+4,+ skip duplicate actions,936.65,138643,84161,0.77,1.09,True
+4,+ move ordering,698.73,91707,52596,0.51,0.81,True
+4,+ transposition table,610.03,74145,41321,0.41,0.71,True
+4,all three,419.92,37632,18563,0.21,0.49,True
+5,Heuristic Alpha-Beta,7618.96,1553572,958845,1.00,1.00,True
+5,+ skip duplicate actions,5738.23,1017901,616719,0.66,0.75,True
+5,+ move ordering,4396.00,673896,400557,0.43,0.58,True
+5,+ transposition table,2271.22,310749,166763,0.20,0.30,True
+5,all three,1232.46,121064,57142,0.08,0.16,True

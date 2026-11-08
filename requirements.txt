@@ -1,0 +1,7 @@
+# Task 1: the Glucose3 solver
+python-sat
+
+# Tasks 2 and 3: the interface.
+# pygame-ce is a drop-in replacement that also has builds for the newest Python versions.
+# With Python 3.13 or older, plain `pygame` works too; install only one of the two.
+pygame-ce

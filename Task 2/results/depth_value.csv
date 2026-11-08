@@ -1,0 +1,11 @@
+player,opponent,games,wins,draws,losses,score_pct,mean_cycles
+"Optimized, depth 2","Optimized, depth 1",240,152,48,40,73.33,20.05
+"Optimized, depth 3","Optimized, depth 2",240,107,53,80,55.62,19.50
+"Optimized, depth 4","Optimized, depth 3",240,90,64,86,50.83,20.98
+"Optimized, depth 5","Optimized, depth 4",240,86,75,79,51.46,22.20
+"Optimized, depth 2","Heuristic Alpha-Beta, depth 2",240,125,54,61,63.33,20.46
+"Optimized, depth 3","Heuristic Alpha-Beta, depth 3",240,111,55,74,57.71,21.03
+"Heuristic Alpha-Beta, 50 ms","Heuristic Alpha-Beta, depth 3",240,100,71,69,56.46,29.81
+"Heuristic A-B + optimizations, 50 ms","Heuristic Alpha-Beta, 50 ms",240,88,69,83,51.04,19.46
+"Heuristic A-B + optimizations, 50 ms","Heuristic Minimax, 50 ms",240,87,75,78,51.88,20.24
+"Heuristic Alpha-Beta, 50 ms","Heuristic Minimax, 50 ms",240,81,80,79,50.42,24.93

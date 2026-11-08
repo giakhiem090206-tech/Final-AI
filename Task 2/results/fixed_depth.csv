@@ -1,0 +1,241 @@
+scenario,configuration,depth_cycles,plies,time_ms,nodes,expansions,evaluations,cutoffs,ebf,value,action
+Crossroads opening,Minimax,1,2,0.10,43,36,0,0,6.56,0.00,MOVE_UP
+Crossroads opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,1,2,0.50,43,36,36,0,6.56,-19.78,FIRE
+Crossroads opening,Heuristic Alpha-Beta,1,2,0.36,24,17,17,4,4.90,-19.78,FIRE
+Crossroads opening,Minimax,2,4,3.99,1555,1332,0,0,6.28,0.00,MOVE_UP
+Crossroads opening,Alpha-Beta,2,4,0.23,130,82,0,45,3.38,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,2,4,10.53,1555,1332,1296,0,6.28,-17.91,FIRE
+Crossroads opening,Heuristic Alpha-Beta,2,4,2.39,297,210,194,71,4.15,-17.91,FIRE
+Crossroads opening,Minimax,3,6,131.86,55987,47988,0,0,6.19,0.00,MOVE_UP
+Crossroads opening,Alpha-Beta,3,6,1.31,812,513,0,295,3.05,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,3,6,295.72,55987,47988,46656,0,6.19,-16.03,FIRE
+Crossroads opening,Heuristic Alpha-Beta,3,6,16.48,2910,2036,1813,811,3.78,-16.03,FIRE
+Crossroads opening,Minimax,4,8,5597.09,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Crossroads opening,Alpha-Beta,4,8,10.03,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,4,8,12527.96,2015539,1727604,1679616,0,6.14,-16.03,FIRE
+Crossroads opening,Heuristic Alpha-Beta,4,8,132.87,23061,16023,14095,6764,3.51,-16.03,FIRE
+Crossroads opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Crossroads opening,Alpha-Beta,5,10,51.46,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Crossroads opening,Heuristic Alpha-Beta,5,10,681.49,130381,88931,78419,39392,3.25,-16.03,MOVE_DOWN
+Crossroads opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Crossroads opening,Alpha-Beta,6,12,331.68,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Crossroads opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Crossroads opening,Heuristic Alpha-Beta,6,12,5996.21,1211763,840871,739881,355149,3.21,-16.03,MOVE_DOWN
+Fortress opening,Minimax,1,2,0.16,43,36,0,0,6.56,0.00,MOVE_UP
+Fortress opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,1,2,2.23,43,36,36,0,6.56,-33.75,MOVE_LEFT
+Fortress opening,Heuristic Alpha-Beta,1,2,1.36,23,16,16,4,4.80,-33.75,MOVE_LEFT
+Fortress opening,Minimax,2,4,4.23,1555,1332,0,0,6.28,0.00,MOVE_UP
+Fortress opening,Alpha-Beta,2,4,0.20,130,82,0,45,3.38,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,2,4,18.63,1555,1332,1296,0,6.28,-31.88,MOVE_LEFT
+Fortress opening,Heuristic Alpha-Beta,2,4,5.14,287,202,186,70,4.12,-31.88,MOVE_LEFT
+Fortress opening,Minimax,3,6,151.65,55987,47988,0,0,6.19,0.00,MOVE_UP
+Fortress opening,Alpha-Beta,3,6,1.40,812,513,0,295,3.05,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,3,6,371.60,55987,47988,46656,0,6.19,-30.00,MOVE_LEFT
+Fortress opening,Heuristic Alpha-Beta,3,6,26.42,3138,2218,2016,802,3.83,-30.00,MOVE_LEFT
+Fortress opening,Minimax,4,8,5688.50,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Fortress opening,Alpha-Beta,4,8,7.45,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,4,8,12337.79,2015539,1727604,1679616,0,6.14,-30.00,MOVE_UP
+Fortress opening,Heuristic Alpha-Beta,4,8,156.76,26441,18326,16462,7378,3.57,-30.00,MOVE_UP
+Fortress opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Fortress opening,Alpha-Beta,5,10,56.85,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Fortress opening,Heuristic Alpha-Beta,5,10,1519.64,305116,215866,192252,83354,3.54,-27.28,MOVE_LEFT
+Fortress opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Fortress opening,Alpha-Beta,6,12,331.75,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Fortress opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Fortress opening,Heuristic Alpha-Beta,6,12,11542.03,2449825,1734262,1537569,676131,3.41,-25.41,MOVE_LEFT
+Corridors opening,Minimax,1,2,0.09,43,36,0,0,6.56,0.00,MOVE_UP
+Corridors opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,1,2,2.91,43,36,36,0,6.56,-31.88,MOVE_LEFT
+Corridors opening,Heuristic Alpha-Beta,1,2,1.82,26,19,19,4,5.10,-31.88,MOVE_LEFT
+Corridors opening,Minimax,2,4,3.92,1555,1332,0,0,6.28,0.00,MOVE_UP
+Corridors opening,Alpha-Beta,2,4,0.19,130,82,0,45,3.38,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,2,4,19.91,1555,1332,1296,0,6.28,-30.00,MOVE_LEFT
+Corridors opening,Heuristic Alpha-Beta,2,4,6.67,348,257,238,72,4.32,-30.00,MOVE_LEFT
+Corridors opening,Minimax,3,6,153.00,55987,47988,0,0,6.19,0.00,MOVE_UP
+Corridors opening,Alpha-Beta,3,6,1.16,812,513,0,295,3.05,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,3,6,421.78,55987,47988,46656,0,6.19,-30.00,MOVE_UP
+Corridors opening,Heuristic Alpha-Beta,3,6,27.03,2531,1837,1678,596,3.69,-30.00,MOVE_UP
+Corridors opening,Minimax,4,8,5789.44,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Corridors opening,Alpha-Beta,4,8,10.10,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,4,8,13953.84,2015539,1727604,1679616,0,6.14,-28.89,MOVE_LEFT
+Corridors opening,Heuristic Alpha-Beta,4,8,153.11,21492,15846,14275,5077,3.48,-28.89,MOVE_LEFT
+Corridors opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Corridors opening,Alpha-Beta,5,10,56.66,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Corridors opening,Heuristic Alpha-Beta,5,10,1235.31,218719,159829,144418,53692,3.42,-25.58,MOVE_LEFT
+Corridors opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Corridors opening,Alpha-Beta,6,12,360.26,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Corridors opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Corridors opening,Heuristic Alpha-Beta,6,12,18421.45,3204891,2298976,2064612,847200,3.48,-22.23,MOVE_LEFT
+Bunkers opening,Minimax,1,2,0.11,43,36,0,0,6.56,0.00,MOVE_UP
+Bunkers opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,1,2,0.82,43,36,36,0,6.56,-24.38,MOVE_UP
+Bunkers opening,Heuristic Alpha-Beta,1,2,0.46,19,12,12,5,4.36,-24.38,MOVE_UP
+Bunkers opening,Minimax,2,4,3.54,1555,1332,0,0,6.28,0.00,MOVE_UP
+Bunkers opening,Alpha-Beta,2,4,0.21,130,82,0,45,3.38,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,2,4,15.97,1555,1332,1296,0,6.28,-22.50,MOVE_UP
+Bunkers opening,Heuristic Alpha-Beta,2,4,2.04,171,112,100,53,3.62,-22.50,MOVE_UP
+Bunkers opening,Minimax,3,6,146.99,55987,47988,0,0,6.19,0.00,MOVE_UP
+Bunkers opening,Alpha-Beta,3,6,1.22,812,513,0,295,3.05,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,3,6,356.05,55987,47988,46656,0,6.19,-20.62,MOVE_UP
+Bunkers opening,Heuristic Alpha-Beta,3,6,11.50,1673,1148,1036,473,3.45,-20.62,MOVE_UP
+Bunkers opening,Minimax,4,8,5360.69,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Bunkers opening,Alpha-Beta,4,8,12.23,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,4,8,11899.46,2015539,1727604,1679616,0,6.14,-18.75,MOVE_UP
+Bunkers opening,Heuristic Alpha-Beta,4,8,80.67,14612,10014,8922,4208,3.32,-18.75,MOVE_UP
+Bunkers opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Bunkers opening,Alpha-Beta,5,10,58.58,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Bunkers opening,Heuristic Alpha-Beta,5,10,590.86,130116,88824,78283,38717,3.25,-18.75,MOVE_UP
+Bunkers opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Bunkers opening,Alpha-Beta,6,12,350.96,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Bunkers opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Bunkers opening,Heuristic Alpha-Beta,6,12,4461.88,1048688,724685,635750,303939,3.17,-16.03,MOVE_UP
+Duel opening,Minimax,1,2,0.09,43,36,0,0,6.56,0.00,MOVE_UP
+Duel opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,1,2,0.43,43,36,36,0,6.56,-22.50,MOVE_UP
+Duel opening,Heuristic Alpha-Beta,1,2,0.36,18,11,11,5,4.24,-22.50,MOVE_UP
+Duel opening,Minimax,2,4,4.54,1555,1332,0,0,6.28,0.00,MOVE_UP
+Duel opening,Alpha-Beta,2,4,0.22,130,82,0,45,3.38,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,2,4,11.06,1555,1332,1296,0,6.28,-20.62,MOVE_UP
+Duel opening,Heuristic Alpha-Beta,2,4,0.84,143,90,79,49,3.46,-20.62,MOVE_UP
+Duel opening,Minimax,3,6,154.28,55987,47988,0,0,6.19,0.00,MOVE_UP
+Duel opening,Alpha-Beta,3,6,1.58,812,513,0,295,3.05,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,3,6,310.43,55987,47988,46656,0,6.19,-18.75,MOVE_UP
+Duel opening,Heuristic Alpha-Beta,3,6,4.43,1006,639,549,353,3.17,-18.75,MOVE_UP
+Duel opening,Minimax,4,8,5213.28,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Duel opening,Alpha-Beta,4,8,7.40,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,4,8,10711.38,2015539,1727604,1679616,0,6.14,-18.75,MOVE_UP
+Duel opening,Heuristic Alpha-Beta,4,8,40.51,10861,7025,5996,3759,3.20,-18.75,MOVE_UP
+Duel opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Duel opening,Alpha-Beta,5,10,48.57,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Duel opening,Heuristic Alpha-Beta,5,10,274.09,68960,45542,39291,22569,3.05,-16.90,MOVE_UP
+Duel opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Duel opening,Alpha-Beta,6,12,298.69,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Duel opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Duel opening,Heuristic Alpha-Beta,6,12,1578.28,408191,272603,240508,126689,2.93,-14.16,MOVE_UP
+Islands opening,Minimax,1,2,0.09,43,36,0,0,6.56,0.00,MOVE_UP
+Islands opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,1,2,0.71,43,36,36,0,6.56,-26.25,MOVE_UP
+Islands opening,Heuristic Alpha-Beta,1,2,0.51,19,12,12,5,4.36,-26.25,MOVE_UP
+Islands opening,Minimax,2,4,4.16,1555,1332,0,0,6.28,0.00,MOVE_UP
+Islands opening,Alpha-Beta,2,4,0.23,130,82,0,45,3.38,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,2,4,18.19,1555,1332,1296,0,6.28,-24.38,MOVE_UP
+Islands opening,Heuristic Alpha-Beta,2,4,4.42,165,106,94,54,3.58,-24.38,MOVE_UP
+Islands opening,Minimax,3,6,158.51,55987,47988,0,0,6.19,0.00,MOVE_UP
+Islands opening,Alpha-Beta,3,6,1.32,812,513,0,295,3.05,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,3,6,419.68,55987,47988,46656,0,6.19,-22.50,MOVE_UP
+Islands opening,Heuristic Alpha-Beta,3,6,11.50,1242,805,699,417,3.28,-22.50,MOVE_UP
+Islands opening,Minimax,4,8,5595.65,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Islands opening,Alpha-Beta,4,8,8.03,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,4,8,12258.38,2015539,1727604,1679616,0,6.14,-20.62,MOVE_UP
+Islands opening,Heuristic Alpha-Beta,4,8,53.24,9590,6333,5552,3037,3.15,-20.62,MOVE_UP
+Islands opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Islands opening,Alpha-Beta,5,10,55.64,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Islands opening,Heuristic Alpha-Beta,5,10,369.07,76728,51792,45600,23036,3.08,-18.75,MOVE_UP
+Islands opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Islands opening,Alpha-Beta,6,12,312.37,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Islands opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Islands opening,Heuristic Alpha-Beta,6,12,3017.08,741269,499252,435594,229000,3.08,-18.75,MOVE_UP
+Diagonal opening,Minimax,1,2,0.09,43,36,0,0,6.56,0.00,MOVE_UP
+Diagonal opening,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,1,2,1.95,43,36,36,0,6.56,-35.62,MOVE_UP
+Diagonal opening,Heuristic Alpha-Beta,1,2,1.33,19,12,12,5,4.36,-35.62,MOVE_UP
+Diagonal opening,Minimax,2,4,3.89,1555,1332,0,0,6.28,0.00,MOVE_UP
+Diagonal opening,Alpha-Beta,2,4,0.19,130,82,0,45,3.38,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,2,4,23.20,1555,1332,1296,0,6.28,-33.75,MOVE_UP
+Diagonal opening,Heuristic Alpha-Beta,2,4,6.37,217,146,134,60,3.84,-33.75,MOVE_UP
+Diagonal opening,Minimax,3,6,132.35,55987,47988,0,0,6.19,0.00,MOVE_UP
+Diagonal opening,Alpha-Beta,3,6,1.14,812,513,0,295,3.05,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,3,6,381.72,55987,47988,46656,0,6.19,-31.88,MOVE_UP
+Diagonal opening,Heuristic Alpha-Beta,3,6,23.08,1920,1297,1154,557,3.53,-31.88,MOVE_UP
+Diagonal opening,Minimax,4,8,5359.41,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Diagonal opening,Alpha-Beta,4,8,8.17,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,4,8,12079.76,2015539,1727604,1679616,0,6.14,-30.00,MOVE_UP
+Diagonal opening,Heuristic Alpha-Beta,4,8,109.01,16320,11081,9711,4828,3.36,-30.00,MOVE_UP
+Diagonal opening,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Diagonal opening,Alpha-Beta,5,10,50.73,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Diagonal opening,Heuristic Alpha-Beta,5,10,647.87,123970,84462,73326,37074,3.23,-28.12,MOVE_UP
+Diagonal opening,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Diagonal opening,Alpha-Beta,6,12,317.89,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Diagonal opening,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Diagonal opening,Heuristic Alpha-Beta,6,12,4114.65,891255,608087,524179,268992,3.13,-26.25,MOVE_UP
+Crossroads midgame,Minimax,1,2,0.09,43,36,0,0,6.56,0.00,MOVE_UP
+Crossroads midgame,Alpha-Beta,1,2,0.03,18,11,0,5,4.24,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,1,2,1.09,43,36,36,0,6.56,-24.38,MOVE_LEFT
+Crossroads midgame,Heuristic Alpha-Beta,1,2,0.62,25,18,18,4,5.00,-24.38,MOVE_LEFT
+Crossroads midgame,Minimax,2,4,5.69,1555,1332,0,0,6.28,0.00,MOVE_UP
+Crossroads midgame,Alpha-Beta,2,4,0.21,130,82,0,45,3.38,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,2,4,17.90,1555,1332,1296,0,6.28,-24.38,MOVE_UP
+Crossroads midgame,Heuristic Alpha-Beta,2,4,4.06,206,148,137,49,3.79,-24.38,MOVE_UP
+Crossroads midgame,Minimax,3,6,164.93,55987,47988,0,0,6.19,0.00,MOVE_UP
+Crossroads midgame,Alpha-Beta,3,6,1.60,812,513,0,295,3.05,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,3,6,434.58,55987,47988,46656,0,6.19,-21.66,MOVE_LEFT
+Crossroads midgame,Heuristic Alpha-Beta,3,6,22.63,2671,1961,1753,647,3.72,-21.66,MOVE_LEFT
+Crossroads midgame,Minimax,4,8,5824.28,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Crossroads midgame,Alpha-Beta,4,8,11.68,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,4,8,14441.73,2015539,1727604,1679616,0,6.14,-19.78,MOVE_LEFT
+Crossroads midgame,Heuristic Alpha-Beta,4,8,140.01,22470,16191,14224,5902,3.50,-19.78,MOVE_LEFT
+Crossroads midgame,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Crossroads midgame,Alpha-Beta,5,10,57.71,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Crossroads midgame,Heuristic Alpha-Beta,5,10,1120.01,210298,150687,131108,57011,3.41,-19.77,MOVE_LEFT
+Crossroads midgame,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Crossroads midgame,Alpha-Beta,6,12,340.73,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Crossroads midgame,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Crossroads midgame,Heuristic Alpha-Beta,6,12,6632.43,1340756,951884,829603,371828,3.24,-19.77,MOVE_UP
+Fortress midgame,Minimax,1,2,0.13,43,36,0,0,6.56,0.00,MOVE_UP
+Fortress midgame,Alpha-Beta,1,2,0.04,18,11,0,5,4.24,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,1,2,1.04,43,36,36,0,6.56,-29.90,MOVE_LEFT
+Fortress midgame,Heuristic Alpha-Beta,1,2,0.90,23,16,16,4,4.80,-29.90,MOVE_LEFT
+Fortress midgame,Minimax,2,4,4.08,1555,1332,0,0,6.28,0.00,MOVE_UP
+Fortress midgame,Alpha-Beta,2,4,0.34,130,82,0,45,3.38,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,2,4,12.22,1555,1332,1296,0,6.28,-28.70,MOVE_UP
+Fortress midgame,Heuristic Alpha-Beta,2,4,2.75,256,177,163,66,4.00,-28.70,MOVE_UP
+Fortress midgame,Minimax,3,6,156.65,55987,47988,0,0,6.19,0.00,MOVE_UP
+Fortress midgame,Alpha-Beta,3,6,1.22,812,513,0,295,3.05,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,3,6,325.27,55987,47988,46656,0,6.19,-26.77,MOVE_UP
+Fortress midgame,Heuristic Alpha-Beta,3,6,15.24,2139,1484,1334,572,3.59,-26.77,MOVE_UP
+Fortress midgame,Minimax,4,8,5501.69,2015539,1727604,0,0,6.14,0.00,MOVE_UP
+Fortress midgame,Alpha-Beta,4,8,8.41,4914,3104,0,1805,2.89,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,4,8,11860.50,2015539,1727604,1679616,0,6.14,-27.33,MOVE_UP
+Fortress midgame,Heuristic Alpha-Beta,4,8,103.69,19680,13311,11719,5948,3.44,-27.33,MOVE_UP
+Fortress midgame,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Fortress midgame,Alpha-Beta,5,10,55.23,29536,18655,0,10875,2.80,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Fortress midgame,Heuristic Alpha-Beta,5,10,718.78,156235,108550,95990,44754,3.31,-23.93,MOVE_UP
+Fortress midgame,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Fortress midgame,Alpha-Beta,6,12,338.02,177278,111966,0,65305,2.74,0.00,MOVE_UP
+Fortress midgame,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Fortress midgame,Heuristic Alpha-Beta,6,12,6084.53,1308785,897990,788185,390563,3.23,-23.35,MOVE_UP
+Duel endgame,Minimax,1,2,0.15,43,36,0,0,6.56,0.00,MOVE_UP
+Duel endgame,Alpha-Beta,1,2,0.05,18,11,0,5,4.24,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,1,2,0.31,43,36,36,0,6.56,-2.91,MOVE_UP
+Duel endgame,Heuristic Alpha-Beta,1,2,0.19,18,11,11,5,4.24,-2.91,MOVE_UP
+Duel endgame,Minimax,2,4,4.81,1555,1332,0,0,6.28,0.00,MOVE_UP
+Duel endgame,Alpha-Beta,2,4,0.28,130,82,0,45,3.38,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,2,4,8.39,1555,1332,1217,0,6.28,-2.91,MOVE_UP
+Duel endgame,Heuristic Alpha-Beta,2,4,0.68,158,105,92,47,3.55,-2.91,MOVE_UP
+Duel endgame,Minimax,3,6,135.57,52669,45144,0,0,6.12,0.00,MOVE_UP
+Duel endgame,Alpha-Beta,3,6,1.53,808,514,0,289,3.05,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,3,6,247.19,52669,45144,41621,0,6.12,0.00,MOVE_UP
+Duel endgame,Heuristic Alpha-Beta,3,6,7.28,1719,1223,1034,450,3.46,0.00,MOVE_UP
+Duel endgame,Minimax,4,8,4733.20,1800751,1543500,0,0,6.05,0.00,MOVE_UP
+Duel endgame,Alpha-Beta,4,8,11.92,5940,3725,0,2196,2.96,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,4,8,8604.88,1800751,1543500,1443935,0,6.05,0.00,MOVE_UP
+Duel endgame,Heuristic Alpha-Beta,4,8,66.66,16157,11823,9694,3978,3.36,0.00,MOVE_UP
+Duel endgame,Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Duel endgame,Alpha-Beta,5,10,132.09,62737,42446,0,20072,3.02,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,5,10,skipped,72559411,-,-,-,-,-,-
+Duel endgame,Heuristic Alpha-Beta,5,10,536.83,133049,98126,80158,32233,3.25,0.00,MOVE_UP
+Duel endgame,Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Duel endgame,Alpha-Beta,6,12,1306.23,600451,421429,0,176540,3.03,0.00,MOVE_UP
+Duel endgame,Heuristic Minimax,6,12,skipped,2612138803,-,-,-,-,-,-
+Duel endgame,Heuristic Alpha-Beta,6,12,4982.58,1172573,878913,713607,273445,3.20,0.00,MOVE_UP
