@@ -112,7 +112,6 @@ class GuiTest(unittest.TestCase):
     def test_a_person_sees_which_tank_is_theirs_and_the_result_in_their_words(self):
         self.app.start_game(HUMAN, "Random", BUILTIN_MAPS["Duel"], 0.05)
         screen = self.app.screen
-        self.assertFalse(screen.show_plan)  # the AI's plan would give it away
         self.assertTrue(run_until(self.app, lambda: screen._waiting_for_human() and screen.decisions[1] is not None, 5))
         self.assertEqual(screen._marker_label(0), "YOU")
         tank = screen.session.state.tanks[0]
@@ -161,28 +160,9 @@ class GuiTest(unittest.TestCase):
         screen = self.app.screen
         screen.speed = 3
         self.assertTrue(run_until(self.app, lambda: screen.session.state.cycle >= 2, 10))
-        for code in (pygame.K_l, pygame.K_v, pygame.K_h, pygame.K_h, pygame.K_h):
-            screen.handle(key(code))
-            screen.draw(self.app.surface)
-        self.assertIsNone(screen.show_effort)  # off, player 1, player 2, off
-        self.assertFalse(screen.show_fire_lines)
-        self.assertFalse(screen.show_plan)
-
-    def test_finished_cycles_can_be_browsed(self):
-        self.app.start_game(FAST, "Random", BUILTIN_MAPS["Duel"], 0.05)
-        screen = self.app.screen
-        screen.speed = 3
-        self.assertTrue(run_until(self.app, lambda: screen.session.state.cycle >= 3, 10))
-        screen.handle(key(pygame.K_p))
-        self.assertTrue(run_until(self.app, lambda: screen.phase == GameScreen.THINKING and screen.worker is None, 5)
-                        or screen.paused)
-        latest = len(screen.history) - 1
-        screen.handle(key(pygame.K_LEFT))
-        self.assertEqual(screen.browsing, latest - 1)
-        self.assertIs(screen._shown_state(), screen.history[latest - 1].state)
+        screen.handle(key(pygame.K_l))
         screen.draw(self.app.surface)
-        screen.handle(key(pygame.K_RIGHT))
-        self.assertIsNone(screen.browsing)
+        self.assertFalse(screen.show_fire_lines)
 
     def test_series_counts_wins_for_the_entrant_after_swapping_sides(self):
         self.app.start_game("Example: shoot when aligned", "Random", BUILTIN_MAPS["Duel"], 0.05, games=3)

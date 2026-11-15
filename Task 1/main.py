@@ -1,10 +1,8 @@
 """Command-line entry point for Task 1 (run from the `Task 1` folder).
 
     python main.py sat --n 8
-    python main.py sat --n 200 --encoding sequential
     python main.py minconflicts --n 8 --selector tabu --seed 0
     python main.py experiment-sat
-    python main.py experiment-encoding
     python main.py experiment-minconflicts
 """
 from __future__ import annotations
@@ -13,21 +11,10 @@ import argparse
 import os
 from typing import Optional, Sequence
 
-from nqueens.encoding import AT_MOST_ONE_ENCODINGS
 from nqueens.experiments import MinConflictsExperiment, SatExperiment, machine_description
-from nqueens.min_conflicts import (
-    MinConflictsSolver,
-    MostConflictedSelector,
-    MostConflictedTabuSelector,
-    RandomConflictedSelector,
-)
+from nqueens.min_conflicts import SELECTORS, MinConflictsSolver
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
-SELECTORS = {
-    "standard": RandomConflictedSelector,
-    "most-conflicted": MostConflictedSelector,
-    "tabu": MostConflictedTabuSelector,
-}
 
 
 def show_board(placement, limit: int = 40) -> None:
@@ -39,7 +26,7 @@ def show_board(placement, limit: int = 40) -> None:
 def run_sat(args: argparse.Namespace) -> None:
     from nqueens.sat_solver import Glucose3QueensSolver
 
-    result = Glucose3QueensSolver(AT_MOST_ONE_ENCODINGS[args.encoding]()).solve(args.n)
+    result = Glucose3QueensSolver().solve(args.n)
     print(f"N={result.n}: {'SAT' if result.satisfiable else 'UNSAT'}, "
           f"{result.num_variables} variables, {result.num_clauses} clauses")
     print(f"encode {result.encode_seconds * 1000:.2f} ms, load {result.load_seconds * 1000:.2f} ms, "
@@ -52,7 +39,8 @@ def run_min_conflicts(args: argparse.Namespace) -> None:
     solver = MinConflictsSolver(SELECTORS[args.selector](), max_steps=args.max_steps)
     result = solver.solve_with_restarts(args.n, args.seed)
     print(f"N={result.n} [{result.selector}]: solved={result.solved}, steps={result.steps}, "
-          f"{result.seconds * 1000:.2f} ms, remaining conflicts={result.remaining_conflicts}")
+          f"restarts={result.restarts}, {result.seconds * 1000:.2f} ms, "
+          f"remaining conflicts={result.remaining_conflicts}")
     if result.placement is not None:
         show_board(result.placement)
 
@@ -70,14 +58,6 @@ def run_sat_experiment(args: argparse.Namespace) -> None:
     report(table, "sat_experiment.csv")
 
 
-def run_encoding_experiment(args: argparse.Namespace) -> None:
-    from nqueens.experiments import EncodingExperiment
-
-    sizes = args.sizes or EncodingExperiment.DEFAULT_SIZES
-    table = EncodingExperiment(sizes, args.repeats).run(lambda n: print(f"  running N={n}", flush=True))
-    report(table, "encoding_experiment.csv")
-
-
 def run_min_conflicts_experiment(args: argparse.Namespace) -> None:
     sizes = args.sizes or MinConflictsExperiment.DEFAULT_SIZES
     table = MinConflictsExperiment(sizes, args.seeds).run(
@@ -90,9 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="N-Queens: Glucose3 and Min-Conflicts")
     commands = parser.add_subparsers(dest="command", required=True)
 
+    ui = commands.add_parser("ui", help="open the graphical N-Queens solver")
+    ui.set_defaults(handler=run_ui)
+
     sat = commands.add_parser("sat", help="solve one board with Glucose3")
     sat.add_argument("--n", type=int, default=8)
-    sat.add_argument("--encoding", choices=sorted(AT_MOST_ONE_ENCODINGS), default="pairwise")
     sat.set_defaults(handler=run_sat)
 
     local = commands.add_parser("minconflicts", help="solve one board with Min-Conflicts")
@@ -107,16 +89,17 @@ def build_parser() -> argparse.ArgumentParser:
     sat_exp.add_argument("--repeats", type=int, default=3)
     sat_exp.set_defaults(handler=run_sat_experiment)
 
-    encoding_exp = commands.add_parser("experiment-encoding", help="pairwise vs sequential counter")
-    encoding_exp.add_argument("--sizes", type=int, nargs="+")
-    encoding_exp.add_argument("--repeats", type=int, default=3)
-    encoding_exp.set_defaults(handler=run_encoding_experiment)
-
     local_exp = commands.add_parser("experiment-minconflicts", help="heuristic vs standard")
     local_exp.add_argument("--sizes", type=int, nargs="+")
     local_exp.add_argument("--seeds", type=int, default=100)
     local_exp.set_defaults(handler=run_min_conflicts_experiment)
     return parser
+
+
+def run_ui(args: argparse.Namespace) -> None:
+    from nqueens.gui import run
+
+    run()
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:

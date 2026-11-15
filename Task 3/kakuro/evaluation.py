@@ -6,14 +6,12 @@ import os
 import platform
 import random
 import statistics
-from concurrent.futures import ProcessPoolExecutor
-from typing import List, NamedTuple, Sequence, Tuple
+from typing import List, Sequence
 
 from .csp import KakuroCSP
-from .generator import BoardGenerator
 from .puzzle import STATEMENT_PUZZLES, KakuroPuzzle, SolutionChecker, load_builtin
 from .solver import (
-    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_DOM_WDEG, VAR_MRV, VAR_MRV_DEGREE,
+    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_MRV, VAR_MRV_DEGREE,
     VAR_STATIC, BacktrackingSolver, SolverConfig,
 )
 
@@ -23,10 +21,8 @@ COMPARED_CONFIGS = [
     SolverConfig(PROPAGATE_FC, VAR_MRV, VAL_ASCENDING),
     SolverConfig(PROPAGATE_FC, VAR_MRV_DEGREE, VAL_ASCENDING),
     SolverConfig(PROPAGATE_FC, VAR_MRV_DEGREE, VAL_LCV),
-    SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING),
     SolverConfig(PROPAGATE_MAC, VAR_STATIC, VAL_ASCENDING),
     SolverConfig(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_LCV),
-    SolverConfig(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_ASCENDING),
 ]
 
 
@@ -60,67 +56,6 @@ class ResultTable:
             writer = csv.writer(handle)
             writer.writerow(self.columns)
             writer.writerows([[self._text(v) for v in row] for row in self.rows])
-
-
-class _HardBoardJob(NamedTuple):
-    height: int
-    density: float
-    seed: int
-    config: SolverConfig
-    time_limit: float
-
-
-def _solve_generated_board(job: _HardBoardJob) -> Tuple[str, str, float, int, int]:
-    """Runs in a worker process. The board is built from its seed, so all configurations get the same one."""
-    puzzle = BoardGenerator(job.height, job.height, job.density, job.seed).generate()
-    result = BacktrackingSolver(KakuroCSP(puzzle), job.config, time_limit=job.time_limit).solve()
-    if result.solution is not None and not SolutionChecker(puzzle).is_valid(result.solution):
-        raise AssertionError(f"invalid solution from {job.config.name} on seed {job.seed}")
-    return job.config.name, result.status, result.seconds, result.stats.backtracks, result.stats.restarts
-
-
-class HardBoardEvaluation:
-    """Which techniques matter when propagation alone is not enough?
-
-    The two boards of the statement are solved by MAC with no search at all, so they cannot
-    separate the heuristics. Larger random boards can. Random boards usually have several
-    solutions, so this measures finding one, and it also tests whether LCV helps there.
-    """
-
-    CONFIGS = (
-        SolverConfig(PROPAGATE_FC, VAR_MRV_DEGREE, VAL_ASCENDING),
-        SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING),
-        SolverConfig(PROPAGATE_MAC, VAR_STATIC, VAL_ASCENDING),
-        SolverConfig(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_ASCENDING),
-        SolverConfig(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_LCV),
-        SolverConfig(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_ASCENDING),
-        SolverConfig(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_LCV),
-        SolverConfig(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_ASCENDING, restarts=True),
-    )
-
-    def __init__(self, sizes: Sequence[int] = (13, 16, 20), seeds: int = 24, density: float = 0.25,
-                 time_limit: float = 10.0, workers: int = 4) -> None:
-        self.sizes = sizes
-        self.seeds = seeds
-        self.density = density
-        self.time_limit = time_limit
-        self.workers = workers
-
-    def run(self, on_progress=lambda text: None) -> ResultTable:
-        table = ResultTable(["size", "configuration", "boards", "solved", "ms_median", "ms_mean", "backtrack_mean",
-                             "restarts_mean"])
-        with ProcessPoolExecutor(max_workers=self.workers) as pool:
-            for size in self.sizes:
-                on_progress(f"{size} x {size}")
-                jobs = [_HardBoardJob(size, self.density, seed, config, self.time_limit)
-                        for config in self.CONFIGS for seed in range(self.seeds)]
-                outcomes = list(pool.map(_solve_generated_board, jobs, chunksize=2))
-                for config in self.CONFIGS:
-                    rows = [o for o in outcomes if o[0] == config.name]
-                    table.add(size, config.name, len(rows), sum(o[1] == "solved" for o in rows),
-                              statistics.median(o[2] for o in rows) * 1000, statistics.mean(o[2] for o in rows) * 1000,
-                              statistics.mean(o[3] for o in rows), statistics.mean(o[4] for o in rows))
-        return table
 
 
 class CorrectnessEvaluation:

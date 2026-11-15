@@ -9,14 +9,20 @@ Color = Tuple[int, int, int]
 
 
 class Theme:
-    BACKGROUND = (18, 20, 26)
-    PANEL = (28, 31, 39)
-    CARD = (38, 42, 52)
-    CARD_HOVER = (50, 55, 68)
-    BORDER = (56, 61, 75)
-    TEXT = (230, 233, 238)
-    MUTED = (150, 157, 170)
-    FAINT = (96, 103, 118)
+    # Light, minimal interface. The playfield itself stays black, as in the arcade original,
+    # so that the sprites keep their contrast.
+    BACKGROUND = (246, 247, 250)
+    PANEL = (255, 255, 255)
+    CARD = (236, 238, 244)
+    CARD_HOVER = (221, 225, 236)
+    BORDER = (208, 213, 224)
+    TEXT = (32, 36, 46)
+    MUTED = (96, 103, 118)
+    FAINT = (140, 147, 162)
+    BOARD_TEXT = (240, 242, 246)  # text drawn on top of the black playfield
+    BOARD_MUTED = (172, 178, 192)
+    BOARD_ACCENT = (240, 200, 90)
+    BOARD_GOOD = (84, 190, 120)
     GROUND_A = (0, 0, 0)  # the black playfield
     WALL_FACE = ((200, 72, 24), (200, 72, 24), (240, 128, 64))  # brick colours, for chips flying off a hit
     # Identity colours of the two players: yellow, as in the arcade original, and blue. Checked
@@ -26,9 +32,10 @@ class Theme:
     PLAYERS = ((232, 192, 40), (74, 168, 232))
     PLAYERS_LIGHT = ((252, 232, 128), (172, 220, 252))
     PLAYERS_DARK = ((156, 112, 16), (24, 88, 148))
-    GOOD = (84, 190, 120)
-    BAD = (226, 84, 84)
-    ACCENT = (240, 200, 90)
+    PLAYER_TEXT = ((138, 96, 0), (24, 88, 148))  # the player colours, darkened to be readable on white
+    GOOD = (26, 128, 70)
+    BAD = (200, 40, 40)
+    ACCENT = (168, 104, 0)
 
 
 class Fonts:
@@ -41,6 +48,7 @@ class Fonts:
 
     @classmethod
     def get(cls, size: int, bold: bool = False) -> pygame.font.Font:
+        size = size + 1 if size <= 14 else size  # small text is bumped by one point for readability
         key = (size, bold)
         if key not in cls._cache:
             cls._cache[key] = pygame.font.SysFont("arial,helvetica,dejavusans,liberationsans", size, bold=bold)

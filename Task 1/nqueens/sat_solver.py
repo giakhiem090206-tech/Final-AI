@@ -3,12 +3,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 from pysat.solvers import Glucose3
 
 from .board import Placement
-from .encoding import AtMostOneEncoding, CnfEncoder
+from .encoding import CnfEncoder
 
 
 @dataclass
@@ -32,11 +32,11 @@ class SatResult:
 class Glucose3QueensSolver:
     """Encodes N-Queens, runs Glucose3 and decodes the model into a placement."""
 
-    def __init__(self, at_most_one: Optional[AtMostOneEncoding] = None) -> None:
-        self.at_most_one = at_most_one
-
-    def solve(self, n: int) -> SatResult:
-        encoder = CnfEncoder(n, self.at_most_one)
+    def solve(self, n: int, fixed: Sequence[Tuple[int, int]] = ()) -> SatResult:
+        """`fixed` squares must hold a queen. They are passed as assumptions (true literals
+        for this call only), so the formula and its clause count stay the same."""
+        encoder = CnfEncoder(n)
+        assumptions = [encoder.variables.variable(r, c) for r, c in fixed]
 
         start = perf_counter()
         formula = encoder.encode()
@@ -44,7 +44,7 @@ class Glucose3QueensSolver:
 
         with Glucose3(bootstrap_with=formula.clauses) as solver:
             loaded = perf_counter()
-            satisfiable = bool(solver.solve())
+            satisfiable = bool(solver.solve(assumptions=assumptions))
             solved = perf_counter()
             model = solver.get_model() if satisfiable else None
             stats = solver.accum_stats() or {}

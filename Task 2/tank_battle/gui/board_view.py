@@ -1,7 +1,7 @@
 """Draws the battlefield in the style of the 8-bit arcade tank games, with overlays that show the AI's thinking."""
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Tuple
 
 import pygame
 
@@ -9,7 +9,7 @@ from ..model import BASE_HP, DELTAS, TANK_HP, WALL_HP, Direction, GameState
 from ..rules import TARGET_BASE, TARGET_TANK, TARGET_WALL, CollisionEvent, StepTrace
 from .constants import BOARD_PIXELS
 from .retro import SPRITE_SIZE, Sprites, draw_frame, draw_pixel_text, pixel_text
-from .theme import Color, Theme, draw_pips, draw_text
+from .theme import Color, Theme, draw_pips
 
 # Rotation of a sprite drawn facing up, by direction; pygame rotates anticlockwise.
 _ANGLE = {int(Direction.UP): 0, int(Direction.DOWN): 180, int(Direction.LEFT): 90, int(Direction.RIGHT): -90}
@@ -256,34 +256,4 @@ class BoardView:
                 if occupied:
                     break
                 x, y = x + dx, y + dy
-        surface.blit(overlay, (0, 0))
-
-    def draw_plan(self, surface: pygame.Surface, owner: int, start: Tuple[int, int], plan: Sequence[Tuple[int, int]]) -> None:
-        """The moves the search expects from this tank: the line it is thinking along."""
-        if not plan:
-            return
-        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        points = [self.center(*start)] + [self.center(*cell) for cell in plan]
-        for index, (a, b) in enumerate(zip(points, points[1:])):
-            alpha = max(60, 210 - index * 28)
-            if a != b:
-                pygame.draw.line(overlay, (*Theme.PLAYERS_LIGHT[owner], alpha), a, b, 3)
-            pygame.draw.circle(overlay, (*Theme.PLAYERS_LIGHT[owner], alpha), b, max(3, self.cell // 10))
-        surface.blit(overlay, (0, 0))
-
-    def draw_effort(self, surface: pygame.Surface, effort: Sequence[int], owner: int) -> None:
-        """How far each cell is from a shot at the target, as a single-hue scale plus the number."""
-        reachable = [value for value in effort if value < self.width * self.height]
-        top = max(reachable) if reachable else 1
-        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        font_size = max(10, self.cell // 3)
-        for y in range(self.height):
-            for x in range(self.width):
-                value = effort[y * self.width + x]
-                if value >= self.width * self.height:
-                    continue
-                strength = 1.0 - value / max(top, 1)
-                rect = self.cell_rect(x, y).inflate(-2, -2)
-                pygame.draw.rect(overlay, (*Theme.PLAYERS[owner], int(26 + 140 * strength)), rect, border_radius=3)
-                draw_text(overlay, str(value), rect.center, font_size, Theme.TEXT, center=True)
         surface.blit(overlay, (0, 0))

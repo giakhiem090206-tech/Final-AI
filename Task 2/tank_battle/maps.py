@@ -9,7 +9,6 @@ starts with a positional advantage (tests/test_maps.py checks this).
 """
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -165,34 +164,6 @@ BUILTIN_MAPS: Dict[str, GameMap] = {
 
 def map_names() -> List[str]:
     return list(BUILTIN_MAPS)
-
-
-def random_map(seed: int) -> GameMap:
-    """A random fair map: bases, tanks and walls are placed with half-turn symmetry.
-
-    Tuning on a handful of fixed maps learns those maps, so tuning and testing use many
-    random maps drawn from separate seeds. Walls can be shot away, so any layout is playable.
-    """
-    rng = random.Random(f"map-{seed}")
-    size = rng.choice((9, 11, 13))
-    density = rng.uniform(0.1, 0.38)
-    last = size - 1
-    cells = [["."] * size for _ in range(size)]
-    for y in range(size):
-        for x in range(size):
-            if (y, x) <= (last - y, last - x) and rng.random() < density:
-                cells[y][x] = cells[last - y][last - x] = "#"
-
-    base_x, base_y = rng.randrange(size), rng.randrange(max(1, size // 4))
-    while True:
-        tank_x, tank_y = rng.randrange(size), rng.randrange(size // 2)
-        if (tank_x, tank_y) != (base_x, base_y):
-            break
-    cells[base_y][base_x] = "b"
-    cells[last - base_y][last - base_x] = "a"
-    cells[tank_y][tank_x] = "B"
-    cells[last - tank_y][last - tank_x] = "A"
-    return GameMap(f"Random {seed}", tuple("".join(row) for row in cells))
 
 
 def is_point_symmetric(rows: Sequence[str]) -> bool:

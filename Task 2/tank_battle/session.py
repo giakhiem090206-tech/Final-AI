@@ -135,7 +135,7 @@ class MatchResult:
 
 
 class HeadlessMatch:
-    """Plays one game to its end without a window, for tournaments and experiments."""
+    """Plays one game to its end without a window, for experiments and the command line."""
 
     def __init__(self, initial_state: GameState, agents: Tuple[Agent, Agent],
                  time_limit: Optional[float] = None) -> None:

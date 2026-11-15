@@ -12,7 +12,7 @@ from .csp import BITS, DIGITS, POPCOUNT, KakuroCSP, largest_sum, smallest_sum
 # Propagation applied after each assignment.
 PROPAGATE_NONE, PROPAGATE_FC, PROPAGATE_MAC = "none", "fc", "mac"
 # Variable and value ordering.
-VAR_STATIC, VAR_MRV, VAR_MRV_DEGREE, VAR_DOM_WDEG = "static", "mrv", "mrv+degree", "dom/wdeg"
+VAR_STATIC, VAR_MRV, VAR_MRV_DEGREE = "static", "mrv", "mrv+degree"
 VAL_ASCENDING, VAL_LCV = "ascending", "lcv"
 
 Change = Tuple[int, int, int]  # variable, old mask, new mask
@@ -21,19 +21,17 @@ Change = Tuple[int, int, int]  # variable, old mask, new mask
 @dataclass(frozen=True)
 class SolverConfig:
     propagation: str = PROPAGATE_MAC
-    variable_order: str = VAR_DOM_WDEG
-    value_order: str = VAL_ASCENDING
-    restarts: bool = False
+    variable_order: str = VAR_MRV_DEGREE
+    value_order: str = VAL_LCV
 
     @classmethod
     def best(cls) -> "SolverConfig":
-        """The best combination measured on hard boards (see run_evaluation.py)."""
-        return cls(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_ASCENDING, restarts=True)
+        """MAC with the Lecture 08 heuristics: MRV, degree to break ties, LCV."""
+        return cls(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_LCV)
 
     @property
     def name(self) -> str:
-        text = f"{self.propagation} / {self.variable_order} / {self.value_order}"
-        return f"{text} / restarts" if self.restarts else text
+        return f"{self.propagation} / {self.variable_order} / {self.value_order}"
 
 
 @dataclass
@@ -45,7 +43,6 @@ class SolverStats:
     pruned_values: int = 0    # digits removed from domains
     wipeouts: int = 0         # propagation emptied a domain
     max_depth: int = 0
-    restarts: int = 0         # times the search started over
 
 
 @dataclass
@@ -84,15 +81,8 @@ class _LimitReached(Exception):
     pass
 
 
-class _RestartSearch(Exception):
-    pass
-
-
 class BacktrackingSolver:
     """BACKTRACKING-SEARCH with INFERENCE, in the configuration given by SolverConfig."""
-
-    RESTART_BASE = 64      # backtracks allowed in the first attempt
-    RESTART_GROWTH = 1.5   # each attempt gets this much more, so the search stays complete
 
     def __init__(self, csp: KakuroCSP, config: Optional[SolverConfig] = None,
                  observer: Optional[SearchObserver] = None, rng: Optional[random.Random] = None,
@@ -111,14 +101,11 @@ class BacktrackingSolver:
         self.max_solutions = max_solutions
         self.domains = self.csp.initial_domains()
         self.assignment = [0] * self.csp.num_variables
-        self.run_weights = [1] * len(self.csp.runs)  # dom/wdeg: how often each run caused a dead end
         self.static_order = list(range(self.csp.num_variables))
         if self.rng is not None:
             self.rng.shuffle(self.static_order)  # lets experiments test other fixed orders
         self.trail: List[Tuple[int, int]] = []
         self._deadline = None if self.time_limit is None else perf_counter() + self.time_limit
-        self._backtrack_limit: Optional[int] = None
-        self._restart_rng: Optional[random.Random] = None
         self.observer.on_start(self.domains)
 
         start = perf_counter()
@@ -126,11 +113,7 @@ class BacktrackingSolver:
         limit_reached = False
         try:
             if self._propagate_initial() and max_solutions > 0:
-                # Counting solutions needs one uninterrupted pass over the whole tree.
-                if self.config.restarts and max_solutions == 1:
-                    self._search_with_restarts()
-                else:
-                    self._search(0)
+                self._search(0)
             if self.solutions:
                 status = "solved"
         except _LimitReached:
@@ -141,32 +124,6 @@ class BacktrackingSolver:
         return SolveResult(status, self.solutions, self.stats, seconds, limit_reached)
 
     # --------------------------------------------------------------------- search
-    def _search_with_restarts(self) -> None:
-        """Run the search with a growing budget of backtracks, starting over when it runs out.
-
-        Search times on these boards are heavy-tailed: a few early choices decide between
-        an instant answer and a very long run. A restart gives up on a bad start, while
-        dom/wdeg keeps what it learned about hard runs. Budgets keep growing, so an
-        unsatisfiable board is still eventually proven so.
-        """
-        root_mark = len(self.trail)
-        budget = float(self.RESTART_BASE)
-        while True:
-            self._backtrack_limit = self.stats.backtracks + int(budget)
-            try:
-                self._search(0)
-                return
-            except _RestartSearch:
-                self.stats.restarts += 1
-                while len(self.trail) > root_mark:
-                    changed, old = self.trail.pop()
-                    self.domains[changed] = old
-                for variable in range(self.csp.num_variables):
-                    self.assignment[variable] = 0
-                budget *= self.RESTART_GROWTH
-                if self._restart_rng is None:  # value order varies from the second attempt on
-                    self._restart_rng = self.rng or random.Random(1)
-
     def _search(self, depth: int) -> bool:
         """Depth-first search; True means enough solutions were found and it should stop."""
         variable = self._select_variable()
@@ -188,8 +145,6 @@ class BacktrackingSolver:
             if self._propagate_after(variable, value) and self._search(depth + 1):
                 return True
             self._undo(variable, value, depth + 1, mark)
-            if self._backtrack_limit is not None and self.stats.backtracks >= self._backtrack_limit:
-                raise _RestartSearch
         return False
 
     def _assign(self, variable: int, value: int, depth: int) -> None:
@@ -232,9 +187,6 @@ class BacktrackingSolver:
                         self.observer.on_select_variable(variable, "next cell in a fixed order")
                     return variable
             return None
-        if order == VAR_DOM_WDEG:
-            return self._select_dom_wdeg()
-
         use_degree = order == VAR_MRV_DEGREE
         runs_of = self.csp.runs_of
         unassigned = self._unassigned_per_run() if use_degree else None
@@ -277,43 +229,10 @@ class BacktrackingSolver:
                     counts[run_index] += 1
         return counts
 
-    def _select_dom_wdeg(self) -> Optional[int]:
-        """Smallest domain size / weight: prefer cells in runs that have caused dead ends.
-
-        Each dead end adds 1 to the weight of the run it happened in, so the search learns
-        where the board is hard and turns to those cells first.
-        """
-        assignment, domains, csp, weights = self.assignment, self.domains, self.csp, self.run_weights
-        # A run counts for a cell only while it has another unassigned cell. Counting the
-        # unassigned cells of every run once is cheaper than looking through runs per cell.
-        unassigned = self._unassigned_per_run()
-        best: List[int] = []
-        best_ratio = 0.0
-        for variable, value in enumerate(assignment):
-            if value != 0:
-                continue
-            weight = 0
-            for run_index in csp.runs_of[variable]:
-                if unassigned[run_index] > 1:  # this cell and at least one more
-                    weight += weights[run_index]
-            ratio = POPCOUNT[domains[variable]] / max(weight, 1)
-            if not best or ratio < best_ratio:
-                best_ratio, best = ratio, [variable]
-            elif ratio == best_ratio:
-                best.append(variable)
-        if not best:
-            return None
-        chosen = self.rng.choice(best) if self.rng is not None else best[0]
-        if self.observer.active:
-            size = POPCOUNT[domains[chosen]]
-            self.observer.on_select_variable(chosen, f"dom/wdeg: {size} value(s), ratio {best_ratio:.2f}")
-        return chosen
-
     def _order_values(self, variable: int) -> List[int]:
         values = list(DIGITS[self.domains[variable]])
-        shuffler = self._restart_rng or self.rng
-        if shuffler is not None:
-            shuffler.shuffle(values)
+        if self.rng is not None:
+            self.rng.shuffle(values)
         if self.config.value_order == VAL_LCV and len(values) > 1:
             scores = {value: self._values_ruled_out(variable, value) for value in values}
             values.sort(key=scores.__getitem__)
@@ -434,7 +353,6 @@ class BacktrackingSolver:
                 observer.on_revise(run_index, changes, csp.runs_of[variable][position + 1:], "forward")
             if not ok:
                 self.stats.wipeouts += 1
-                self.run_weights[run_index] += 1
                 if observer.active:
                     observer.on_wipeout(run_index, failed)
                 break
@@ -460,7 +378,6 @@ class BacktrackingSolver:
             stats.revisions += 1
             if after is None:
                 stats.wipeouts += 1
-                self.run_weights[run_index] += 1
                 if active:
                     observer.on_revise(run_index, [], list(queue), "gac")
                     observer.on_wipeout(run_index, None)

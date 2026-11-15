@@ -1,4 +1,4 @@
-"""The window, its controls, and the two modes: watching the solver and playing by hand."""
+"""The window and its controls: runs the solver and replays its search step by step."""
 from __future__ import annotations
 
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -8,12 +8,11 @@ import pygame
 from ..csp import KakuroCSP, digits_text
 from ..puzzle import BUILTIN_PUZZLES, KakuroPuzzle, Run, SolutionChecker, load_builtin
 from ..solver import (
-    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_DOM_WDEG, VAR_MRV, VAR_MRV_DEGREE,
+    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_MRV, VAR_MRV_DEGREE,
     VAR_STATIC, BacktrackingSolver, SolveResult, SolverConfig,
 )
 from ..trace import ASSIGN, BACKTRACK, FINISH, REJECT, SOLUTION, WIPEOUT, Replay, SearchTree, TraceRecorder
 from .board_panel import BoardPanel
-from .play_screen import PlayScreen
 from .theme import Fonts, Theme, draw_text, wrap_text
 from .tree_panel import TreePanel
 from .widgets import Button, Segmented
@@ -24,7 +23,6 @@ RIGHT = 636
 RIGHT_WIDTH = WINDOW_SIZE[0] - RIGHT - 12
 DISPLAY_LIMIT = 20_000  # assignments recorded for display
 SPEEDS = (1, 2, 4, 8, 15, 30, 60, 120)  # events per second
-MODE_REPLAY, MODE_PLAY = "replay", "play"
 
 
 class VisualizerApp:
@@ -33,10 +31,6 @@ class VisualizerApp:
         Fonts.clear()
         pygame.display.set_caption("Kakuro: CSP solver visualizer")
         self.surface = self._open_window()
-        # The game never needs typed text. With text input on, an input method (Vietnamese Telex,
-        # for example) holds each digit as "composition" until another key arrives, and the
-        # digit never reaches the board as a key press.
-        pygame.key.stop_text_input()
         self.clock = pygame.time.Clock()
         self.running = True
         self.playing = False
@@ -52,8 +46,6 @@ class VisualizerApp:
         self.timeline = pygame.Rect(BOARD_AREA.x + 2, BOARD_AREA.bottom + 96, BOARD_AREA.width - 4, 22)
         self.tree_panel = TreePanel(pygame.Rect(RIGHT, 612, RIGHT_WIDTH, WINDOW_SIZE[1] - 612 - 12))
 
-        self.mode_choice = Segmented(pygame.Rect(RIGHT + 200, 16, RIGHT_WIDTH - 212, 26), "",
-                                     [("Watch the solver", MODE_REPLAY), ("Play it yourself", MODE_PLAY)], 0, self._mode_changed)
         y, h = 50, 26
         default_puzzle = self.names.index("Complex (9x9)") if "Complex (9x9)" in self.names else 0
         self.choices = [
@@ -63,10 +55,10 @@ class VisualizerApp:
                       [("None", PROPAGATE_NONE), ("Forward checking", PROPAGATE_FC), ("MAC (GAC-3)", PROPAGATE_MAC)],
                       2, self.rebuild),
             Segmented(pygame.Rect(RIGHT + 12, y + 60, RIGHT_WIDTH - 24, h), "Variable order",
-                      [("Fixed", VAR_STATIC), ("MRV", VAR_MRV), ("MRV+degree", VAR_MRV_DEGREE), ("dom/wdeg", VAR_DOM_WDEG)],
-                      3, self.rebuild),
+                      [("Fixed", VAR_STATIC), ("MRV", VAR_MRV), ("MRV+degree", VAR_MRV_DEGREE)],
+                      2, self.rebuild),
             Segmented(pygame.Rect(RIGHT + 12, y + 90, RIGHT_WIDTH - 24, h), "Value order",
-                      [("Ascending", VAL_ASCENDING), ("LCV", VAL_LCV)], 0, self.rebuild),
+                      [("Ascending", VAL_ASCENDING), ("LCV", VAL_LCV)], 1, self.rebuild),
         ]
         self.puzzle_choice, self.propagation_choice, self.variable_choice, self.value_choice = self.choices
 
@@ -77,8 +69,6 @@ class VisualizerApp:
             ("Heat", self.toggle_heat, 50),
         ])
         self.play_button = self.buttons[2]
-        self.play = PlayScreen(self.puzzles, BOARD_AREA, RIGHT, RIGHT_WIDTH)
-        self.theme_button = Button(pygame.Rect(BOARD_AREA.right - 132, WINDOW_SIZE[1] - 31, 132, 24), "", self.toggle_theme)
         self.rebuild()
 
     @staticmethod
@@ -99,9 +89,7 @@ class VisualizerApp:
 
     # ------------------------------------------------------------------ solving
     def current_config(self) -> SolverConfig:
-        # Restarts stay off here: the search tree on screen is one continuous search.
-        return SolverConfig(self.propagation_choice.value, self.variable_choice.value, self.value_choice.value,
-                            restarts=False)
+        return SolverConfig(self.propagation_choice.value, self.variable_choice.value, self.value_choice.value)
 
     def rebuild(self) -> None:
         """Run the solver in the chosen configuration, recording every step for replay."""
@@ -164,26 +152,8 @@ class VisualizerApp:
         fraction = (x - self.timeline.x) / max(1, self.timeline.width)
         self.replay.seek(int(fraction * (len(self.replay) - 1)))
 
-    def _mode_changed(self) -> None:
-        self.playing = False
-
-    @property
-    def mode(self) -> str:
-        return self.mode_choice.value
-
-    def toggle_theme(self) -> None:
-        Theme.use(Theme.other())
-
     # --------------------------------------------------------------------- input
     def handle(self, event: pygame.event.Event) -> None:
-        if self.mode_choice.handle(event) or self.theme_button.handle(event):
-            return
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
-            self.toggle_theme()
-            return
-        if self.mode == MODE_PLAY:
-            self.play.handle(event)
-            return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.timeline.collidepoint(event.pos):
                 self.dragging = True
@@ -233,13 +203,7 @@ class VisualizerApp:
     def draw(self) -> None:
         surface = self.surface
         surface.fill(Theme.BACKGROUND)
-        if self.mode == MODE_PLAY:
-            self.play.draw(surface)
-            self.mode_choice.draw(surface)
-        else:
-            self._draw_replay(surface)
-        self.theme_button.label = "Theme: " + ("classic" if Theme.name == "classic" else "dark")
-        self.theme_button.draw(surface)
+        self._draw_replay(surface)
 
     def _inspected_runs(self) -> List[Run]:
         """The runs through the clicked cell, or the run of a clicked clue."""
@@ -293,7 +257,6 @@ class VisualizerApp:
         panel = pygame.Rect(RIGHT, 8, RIGHT_WIDTH, 196)
         pygame.draw.rect(surface, Theme.PANEL, panel, border_radius=10)
         draw_text(surface, "Solver configuration", (panel.x + 12, panel.y + 12), 14, Theme.TEXT, bold=True)
-        self.mode_choice.draw(surface)
         for choice in self.choices:
             choice.draw(surface)
         self.play_button.label = "Pause" if self.playing else "Play"
@@ -386,13 +349,43 @@ class VisualizerApp:
         elif self.result.status == "unsatisfiable":
             text, color = "No solution exists", Theme.BAD
         elif stats.backtracks == 0:
-            text, color = "0 backtracks: try Forward checking or the Extra board", Theme.ACCENT
+            text, color = "0 backtracks: try Forward checking with a Fixed order", Theme.ACCENT
         else:
             text, color = f"{stats.backtracks} backtracks in this run", Theme.GOOD
         draw_text(surface, text, (panel.right - 12, panel.y + 9), 12, color, right=True)
 
+    @staticmethod
+    def _key_cap(surface: pygame.Surface, label: str, x: int, y: int) -> int:
+        """One keyboard key, drawn as a key cap; returns its right edge. Arrows are drawn as triangles."""
+        arrow = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}.get(label)
+        width = 20 if arrow or len(label) == 1 else Fonts.get(11, True).size(label)[0] + 12
+        cap = pygame.Rect(x, y, width, 18)
+        pygame.draw.rect(surface, Theme.BORDER, cap.move(0, 2), border_radius=4)
+        pygame.draw.rect(surface, Theme.CARD, cap, border_radius=4)
+        if arrow:
+            cx, cy = cap.center
+            dx, dy = arrow
+            side = (-dy * 4, dx * 4)
+            base = (cx - dx * 2, cy - dy * 2)
+            pygame.draw.polygon(surface, Theme.TEXT, [(cx + dx * 4, cy + dy * 4), (base[0] + side[0], base[1] + side[1]),
+                                                      (base[0] - side[0], base[1] - side[1])])
+        else:
+            draw_text(surface, label, cap.center, 11, Theme.TEXT, bold=True, center=True)
+        return cap.right
+
+    def _draw_shortcuts(self, surface: pygame.Surface) -> None:
+        """The shortcut bar under the timeline: each key as a key cap, with what it does."""
+        groups = [(["SPACE"], "play"), (["LEFT", "RIGHT"], "step"), (["UP", "DOWN"], "choice"),
+                  (["-", "+"], "speed"), (["M"], "heat")]
+        x, y = BOARD_AREA.x + 2, WINDOW_SIZE[1] - 36
+        for keys, label in groups:
+            for key in keys:
+                x = self._key_cap(surface, key, x, y) + 3
+            x = draw_text(surface, label, (x + 2, y + 1), 12, Theme.MUTED).right + 12
+
     def _draw_legend(self, surface: pygame.Surface) -> None:
-        y = WINDOW_SIZE[1] - 24
+        self._draw_shortcuts(surface)
+        y = WINDOW_SIZE[1] - 17
         items = [("candidate", Theme.DIGIT), ("just pruned", Theme.PRUNED), ("determined", Theme.DETERMINED),
                  ("selected", Theme.SELECT), ("assigned", Theme.GOOD), ("few values", Theme.HEAT[3])]
         x = BOARD_AREA.x
@@ -401,7 +394,6 @@ class VisualizerApp:
             rect = draw_text(surface, label, (x + 15, y), 12, Theme.MUTED)
             x = rect.right + 12
 
-    # ---------------------------------------------------------------------- play
     # ------------------------------------------------------------------ main loop
     def run(self) -> None:
         while self.running:
@@ -409,6 +401,8 @@ class VisualizerApp:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     self.running = False
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                    pygame.display.toggle_fullscreen()
                 else:
                     self.handle(event)
             self.update(seconds)

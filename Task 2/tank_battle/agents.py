@@ -83,8 +83,6 @@ class SearchAgent(Agent):
             "value": result.value,
             "search_seconds": result.seconds,
         }
-        if self.config.transposition_table:
-            self.last_info["plan"] = self._search.principal_variation(state, player, result.action)
         return result.action
 
 

@@ -190,28 +190,6 @@ class AdversarialSearch:
         return SearchResult(best_action, best_value, completed, perf_counter() - start,
                             self._stats, timed_out)
 
-    def principal_variation(self, state: GameState, player: int, first: Action, length: int = 6) -> List[Tuple[int, int]]:
-        """The cells this player's tank is expected to visit, read back from the search's memory."""
-        cells: List[Tuple[int, int]] = []
-        action: Optional[Action] = first
-        for _ in range(length):
-            key = state.key()
-            if action is None:
-                entry = self._table.get(key)
-                if entry is None:
-                    break
-                action = entry[3]
-            reply = self._replies.get((key, action))
-            if reply is None:
-                break
-            state = GameRules.step(state, action, reply) if player == 0 else GameRules.step(state, reply, action)
-            tank = state.tanks[player]
-            cells.append((tank.x, tank.y))
-            if GameRules.outcome(state) is not None:
-                break
-            action = None
-        return cells
-
     # ------------------------------------------------------------------- the search
     def _root_actions(self, state: GameState, rng: Optional[random.Random]) -> List[Action]:
         actions = self._actions(state, self._player)

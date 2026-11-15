@@ -2,22 +2,20 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 import pygame
 
 from ..agents import Agent
-from ..evaluation import FiringEffortMap, RaceEvaluator, RaceWeights
 from ..maps import GameMap
 from ..model import BASE_HP, DRAW, TANK_HP, Action, GameState
 from ..rules import TARGET_TANK, TARGET_WALL, StepTrace
 from ..session import STATUS_OK, Decision, GameSession
 from .board_view import BoardView
-from .chart import AdvantageChart
 from .constants import ANIMATION_MS, BOARD_PIXELS, HUMAN, PANEL_WIDTH, TOP_BAR, WINDOW_SIZE
 from .retro import FIELD_BLACK, FRAME_GREY, Sprites, draw_pixel_text
 from .theme import Color, Fonts, Theme, draw_pips, draw_text, fit_text
+from .widgets import Button
 
 if TYPE_CHECKING:
     from .app import TankBattleApp
@@ -59,15 +57,6 @@ class HumanAgent(Agent):
 
     def choose_action(self, state: GameState, player: int) -> Action:
         return Action.STAY
-
-
-@dataclass
-class HistoryFrame:
-    """A finished cycle, kept so that the game can be browsed afterwards."""
-
-    state: GameState
-    decisions: Tuple[Optional[Decision], Optional[Decision]]
-    infos: Tuple[Dict[str, object], Dict[str, object]]
 
 
 class MatchStats:
@@ -142,18 +131,13 @@ class GameScreen:
         self.view = BoardView((0, TOP_BAR), game_map.width, game_map.height)
         self.icons = Sprites(1)
         self.big_icons = Sprites(2)
-        self.chart = AdvantageChart(pygame.Rect(BOARD_PIXELS + 8, 362, PANEL_WIDTH - 16, 116))
-        self.neutral = RaceEvaluator(RaceWeights(aggression=0.0))
-        self.effort = FiringEffortMap()
         self.speed = 1
         self.paused = False
         self.single_step = False
         self.show_fire_lines = True
-        # The AI's planned path would give its intentions away to a person playing against it.
-        self.show_plan = not any(isinstance(agent, HumanAgent) for agent in agents)
-        self.show_effort: Optional[int] = None  # the player whose effort map is on, if any
         self.clock_ms = 0  # time since the screen opened, for blinking
         self._begin()
+        self._make_buttons(any(isinstance(agent, HumanAgent) for agent in agents))
 
     def _seat_agents(self) -> Tuple[Agent, Agent]:
         a, b = self._entrants
@@ -176,10 +160,7 @@ class GameScreen:
         self.worker: Optional[threading.Thread] = None
         self.single_step = False
         self._last_infos: List[Dict[str, object]] = [{}, {}]
-        self.history: List[HistoryFrame] = []
-        self.browsing: Optional[int] = None
         self.stats = MatchStats()
-        self.advantage: List[float] = [self.neutral.evaluate(self.session.state, 0)]
         self._played_events: Set[int] = set()
         self._recorded_result = False
         self.view.effects.clear()
@@ -228,8 +209,6 @@ class GameScreen:
         self.last_decisions = list(self.decisions)
         self._last_infos = [dict(agent.last_info) for agent in self.agents]
         self.stats.record(self.decisions, self.trace)
-        self.history.append(HistoryFrame(self.session.state, tuple(self.decisions), tuple(self._last_infos)))
-        self.advantage.append(self._advantage_of(self.session.state))
         self._played_events = set()
         self.decisions = [None, None]
         self.worker = None
@@ -237,14 +216,6 @@ class GameScreen:
         self._since_cycle = 0
         self.phase = self.ANIMATING
         self._write_log()
-
-    def _advantage_of(self, state: GameState) -> float:
-        """A neutral opinion of the position, the same whichever algorithms are playing."""
-        outcome = self.session.outcome if state is self.session.state else None
-        if outcome is None:
-            return self.neutral.evaluate(state, 0)
-        last = self.advantage[-1] if self.advantage else 0.0
-        return last if outcome == DRAW else (abs(last) + 30.0) * (1 if outcome == 0 else -1)
 
     def _write_log(self) -> None:
         cycle = self.session.state.cycle
@@ -264,50 +235,77 @@ class GameScreen:
         del self.log[:-7]
 
     # --------------------------------------------------------------------- input
+    # ------------------------------------------------------------- actions (keys and buttons)
+    def _toggle_pause(self) -> None:
+        self.paused = not self.paused
+
+    def _step_once(self) -> None:
+        self.paused = True
+        self.single_step = True
+
+    def _change_speed(self, delta: int) -> None:
+        self.speed = min(len(ANIMATION_MS) - 1, max(0, self.speed + delta))
+
+    def _restart(self) -> None:
+        if self.worker is None or not self.worker.is_alive():
+            self._begin()
+
+    def _make_buttons(self, human: bool) -> None:
+        """On-screen controls, so that everything can be done with the mouse as well as the keyboard."""
+        self.pause_button = Button(pygame.Rect(0, 0, 0, 0), "Pause", self._toggle_pause, accent=True)
+        self.restart_button = Button(pygame.Rect(0, 0, 0, 0), "Restart", self._restart)
+        slower = Button(pygame.Rect(0, 0, 0, 0), "Slower", lambda: self._change_speed(-1))
+        faster = Button(pygame.Rect(0, 0, 0, 0), "Faster", lambda: self._change_speed(1))
+        menu = Button(pygame.Rect(0, 0, 0, 0), "Menu", self.app.show_menu)
+        if human:
+            self.buttons = [self.pause_button, slower, faster, self.restart_button, menu]
+        else:
+            step = Button(pygame.Rect(0, 0, 0, 0), "Step", self._step_once)
+            self.buttons = [self.pause_button, step, slower, faster, self.restart_button, menu]
+
+    def _layout_buttons(self, x: int, y: int, width: int) -> int:
+        """Place the buttons in rows of four below (x, y); returns the bottom edge."""
+        columns, gap, height = 4, 6, 30
+        size = (width - gap * (columns - 1)) // columns
+        for index, button in enumerate(self.buttons):
+            row, col = divmod(index, columns)
+            button.rect = pygame.Rect(x + col * (size + gap), y + row * (height + gap), size, height)
+        self.pause_button.label = "Resume" if self.paused else "Pause"
+        self.restart_button.enabled = self.worker is None or not self.worker.is_alive()
+        rows = (len(self.buttons) + columns - 1) // columns
+        return y + rows * (height + gap) - gap
+
     def handle(self, event: pygame.event.Event) -> None:
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            for button in self.buttons:
+                if button.handle(event):
+                    return
+            return
         if event.type != pygame.KEYDOWN:
             return
         key = event.key
         if key == pygame.K_ESCAPE:
             self.app.show_menu()
         elif key == pygame.K_r:
-            if self.worker is None or not self.worker.is_alive():
-                self._begin()
+            self._restart()
         elif key == pygame.K_p:
-            self.paused = not self.paused
-            self.browsing = None
+            self._toggle_pause()
         elif key == pygame.K_n:
-            self.paused = True
-            self.single_step = True
-            self.browsing = None
+            self._step_once()
         elif key in (pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS):
-            self.speed = min(len(ANIMATION_MS) - 1, self.speed + 1)
+            self._change_speed(1)
         elif key in (pygame.K_MINUS, pygame.K_KP_MINUS):
-            self.speed = max(0, self.speed - 1)
+            self._change_speed(-1)
         elif key == pygame.K_l:
             self.show_fire_lines = not self.show_fire_lines
-        elif key == pygame.K_v:
-            self.show_plan = not self.show_plan
-        elif key == pygame.K_h:
-            # Cycles through: off, player 1's map, player 2's map.
-            self.show_effort = {None: 0, 0: 1, 1: None}[self.show_effort]
+        elif key == pygame.K_F11:
+            pygame.display.toggle_fullscreen()
         elif key == pygame.K_RETURN and self.phase == self.OVER:
             if not self.series.is_finished:
                 self.series.advance()
                 self._begin()
-        elif key in (pygame.K_LEFT, pygame.K_RIGHT) and self._can_browse():
-            self._browse(-1 if key == pygame.K_LEFT else 1)
         elif self.phase != self.OVER:
             self._human_input(key)
-
-    def _can_browse(self) -> bool:
-        return (self.paused or self.phase == self.OVER) and not any(self.is_human) and bool(self.history)
-
-    def _browse(self, direction: int) -> None:
-        last = len(self.history) - 1
-        current = last if self.browsing is None else self.browsing
-        target = current + direction
-        self.browsing = None if target >= last else max(0, target)
 
     def _bindings(self) -> List[Tuple[Dict[int, Action], int]]:
         """Which key set drives which player. With one person both sets work; with two, each has their own."""
@@ -351,33 +349,24 @@ class GameScreen:
                         break
 
     # ------------------------------------------------------------------- drawing
-    def _shown_state(self) -> GameState:
-        return self.session.state if self.browsing is None else self.history[self.browsing].state
-
-    def _shown_frame_data(self):
-        if self.browsing is None:
-            return self.last_decisions, self._last_infos
-        frame = self.history[self.browsing]
-        return frame.decisions, frame.infos
-
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(Theme.BACKGROUND)
-        state = self._shown_state()
+        state = self.session.state
         self._draw_top_bar(surface, state)
-        animating = self.phase == self.ANIMATING and self.browsing is None and ANIMATION_MS[self.speed] > 0
+        animating = self.phase == self.ANIMATING and ANIMATION_MS[self.speed] > 0
         if animating:
             self.view.draw_animated(surface, self.before, state, self.trace,
                                     min(1.0, self.elapsed / ANIMATION_MS[self.speed]))
         else:
             self.view.draw_state(surface, state)
-            self._draw_overlays(surface, state)
-        if self.browsing is None:
-            self._draw_player_markers(surface, state, animating)
-        if self.paused and self.phase != self.OVER and self.browsing is None and not self.single_step:
+            if self.show_fire_lines:
+                self.view.draw_fire_lines(surface, state)
+        self._draw_player_markers(surface, state, animating)
+        if self.paused and self.phase != self.OVER and not self.single_step:
             self.view.draw_banner(surface, "PAUSE", (216, 40, 0))
         self._draw_panel(surface, state)
         self._draw_hints(surface)
-        if self.phase == self.OVER and self.browsing is None:
+        if self.phase == self.OVER:
             self._draw_result(surface)
 
     def _marker_label(self, player: int) -> str:
@@ -395,20 +384,7 @@ class GameScreen:
             waiting = self._waiting_for_human() and self.decisions[player] is None and not self.paused
             self.view.draw_player_marker(surface, player, x, y, self._marker_label(player), waiting and blink)
 
-    def _draw_overlays(self, surface: pygame.Surface, state: GameState) -> None:
-        if self.show_effort is not None:
-            target = state.bases[1 - self.show_effort]
-            self.view.draw_effort(surface, self.effort.effort(state, target.x, target.y), self.show_effort)
-        if self.show_fire_lines:
-            self.view.draw_fire_lines(surface, state)
-        if self.show_plan:
-            _, infos = self._shown_frame_data()
-            for player, tank in enumerate(state.tanks):
-                self.view.draw_plan(surface, player, (tank.x, tank.y), infos[player].get("plan", ()))
-
     def _status(self) -> Tuple[str, Color]:
-        if self.browsing is not None:
-            return f"viewing cycle {self.history[self.browsing].state.cycle}", Theme.ACCENT
         if self.phase == self.OVER:
             return "finished", Theme.MUTED
         if self.paused:
@@ -419,13 +395,13 @@ class GameScreen:
 
     def _draw_top_bar(self, surface: pygame.Surface, state: GameState) -> None:
         surface.blit(self.big_icons.flag(), (10, 8))
-        title = draw_pixel_text(surface, self.game_map.name, (46, 14), 3, Theme.TEXT, shadow=(0, 0, 0))
+        title = draw_pixel_text(surface, self.game_map.name, (46, 14), 3, Theme.TEXT, shadow=Theme.BORDER)
         info = f"CYCLE {state.cycle}/{state.max_cycles}"
         draw_pixel_text(surface, info, (title.right + 24, 18), 2, Theme.ACCENT)
         status, color = self._status()
         if any(self.is_human):
             # A person needs to see at a glance that the game is waiting for them.
-            if self._waiting_for_human() and not self.paused and self.browsing is None:
+            if self._waiting_for_human() and not self.paused:
                 draw_pixel_text(surface, "YOUR MOVE", (BOARD_PIXELS - 10, 18), 2, Theme.GOOD, right=True)
             else:
                 draw_text(surface, status, (BOARD_PIXELS - 10, 15), 14, color, right=True)
@@ -446,13 +422,12 @@ class GameScreen:
     def _draw_panel(self, surface: pygame.Surface, state: GameState) -> None:
         x = BOARD_PIXELS + 8
         y = TOP_BAR - 6
-        decisions, infos = self._shown_frame_data()
+        decisions, infos = self.last_decisions, self._last_infos
         for player in (0, 1):
             y = self._draw_player_card(surface, player, x, y, state, decisions[player], infos[player]) + 6
-        highlight = None if self.browsing is None else self.browsing + 1
-        self.chart.rect.y = y
-        self.chart.draw(surface, self.advantage, highlight)
-        y = self.chart.rect.bottom + 6
+        y = self._layout_buttons(x, y, PANEL_WIDTH - 16) + 8
+        for button in self.buttons:
+            button.draw(surface)
         height = WINDOW_SIZE[1] - y - 8
         pygame.draw.rect(surface, Theme.PANEL, (x, y, PANEL_WIDTH - 16, height), border_radius=10)
         draw_text(surface, "Events", (x + 12, y + 7), 14, Theme.TEXT, bold=True)
@@ -468,7 +443,7 @@ class GameScreen:
         card = pygame.Rect(x, y, PANEL_WIDTH - 16, height)
         pygame.draw.rect(surface, Theme.PANEL, card, border_radius=10)
         surface.blit(self.icons.tank(player, 0), (x + 10, y + 6))
-        draw_pixel_text(surface, f"{player + 1}P", (x + 32, y + 11), 2, Theme.PLAYERS[player])
+        draw_pixel_text(surface, f"{player + 1}P", (x + 32, y + 11), 2, Theme.PLAYER_TEXT[player])
         name = fit_text(self.names[player], 14, card.width - 84, bold=True)
         draw_text(surface, name, (x + 66, y + 8), 14, Theme.TEXT, bold=True)
 
@@ -540,12 +515,18 @@ class GameScreen:
         draw_pips(surface, pygame.Rect(x + 40, y + 3, width - 78, 10), hp, maximum, color)
 
     def _draw_hints(self, surface: pygame.Surface) -> None:
+        """The shortcut bar under the board: each key drawn as a key cap, with what it does."""
         if any(self.is_human):
-            text = ("One move per turn; the game waits for you. Hold a key to keep moving.  |  "
-                    "P pause  L aim line  +/- speed  R restart  Esc menu")
+            groups = [(["P"], "pause"), (["-", "+"], "speed"), (["L"], "aim line"), (["R"], "restart"),
+                      (["ESC"], "menu"), (["F11"], "fullscreen")]
         else:
-            text = "P pause  N step  Left/Right browse  +/- speed  L fire lines  V plan  H effort map  R restart  Esc menu"
-        draw_text(surface, text, (14, WINDOW_SIZE[1] - 24), 12, Theme.MUTED)
+            groups = [(["P"], "pause"), (["N"], "step"), (["-", "+"], "speed"), (["L"], "bullet lines"),
+                      (["R"], "restart"), (["ESC"], "menu"), (["F11"], "fullscreen")]
+        x, y = 12, WINDOW_SIZE[1] - 26
+        for keys, label in groups:
+            for key in keys:
+                x = _key_cap(surface, key, x, y) + 3
+            x = draw_text(surface, label, (x + 2, y + 2), 12, Theme.MUTED).right + 14
 
     def _result_reason(self) -> str:
         state = self.session.state
@@ -563,40 +544,40 @@ class GameScreen:
         box.center = (BOARD_PIXELS // 2, TOP_BAR + BOARD_PIXELS // 2)
         pygame.draw.rect(surface, FIELD_BLACK, box)
         pygame.draw.rect(surface, FRAME_GREY, box, 6)
-        accent = Theme.ACCENT if outcome == DRAW else Theme.PLAYERS[outcome]
+        accent = Theme.BOARD_ACCENT if outcome == DRAW else Theme.PLAYERS[outcome]
         heading, color = "GAME OVER", (216, 40, 0)
         title = "Draw" if outcome == DRAW else f"P{outcome + 1} wins: {self.names[outcome]}"
         if sum(self.is_human) == 1:  # speak to the person: did they win?
             opponent = self.names[self.is_human.index(False)]
             if outcome == DRAW:
-                heading, color, title = "DRAW", Theme.ACCENT, f"Nobody wins against {opponent}"
+                heading, color, title = "DRAW", Theme.BOARD_ACCENT, f"Nobody wins against {opponent}"
             elif self.is_human[outcome]:
-                heading, color, title = "YOU WIN!", Theme.GOOD, f"You beat {opponent}"
+                heading, color, title = "YOU WIN!", Theme.BOARD_GOOD, f"You beat {opponent}"
             else:
                 title = f"{opponent} wins"
         draw_pixel_text(surface, heading, (box.centerx, box.y + 30), 5, color, center=True, shadow=(60, 10, 0))
         draw_text(surface, fit_text(title, 19, box.width - 30, bold=True), (box.centerx, box.y + 64), 19, accent,
                   bold=True, center=True)
         draw_text(surface, f"{self._result_reason()}, after {self.session.state.cycle} cycles",
-                  (box.centerx, box.y + 90), 13, Theme.MUTED, center=True)
+                  (box.centerx, box.y + 90), 13, Theme.BOARD_MUTED, center=True)
 
         columns = (box.x + 180, box.x + 290, box.x + 400)
         for column, label in zip(columns, ("Shots", "Hits on enemy", "Walls broken")):
-            draw_text(surface, label, (column, box.y + 104), 12, Theme.MUTED, center=True)
+            draw_text(surface, label, (column, box.y + 110), 12, Theme.BOARD_MUTED, center=True)
         stats = self.stats
         for player in (0, 1):
-            y = box.y + 124 + player * 20
+            y = box.y + 132 + player * 20
             surface.blit(self.icons.tank(player, 0), (box.x + 18, y - 9))
-            draw_text(surface, fit_text(f"P{player + 1}  {self.names[player]}", 12, 96), (box.x + 40, y - 8), 12, Theme.TEXT)
+            draw_text(surface, fit_text(f"P{player + 1}  {self.names[player]}", 12, 96), (box.x + 40, y - 8), 12, Theme.BOARD_TEXT)
             values = (stats.shots[player], stats.hits[player], stats.walls_destroyed[player])
             for column, value in zip(columns, values):
-                draw_text(surface, str(value), (column, y), 13, Theme.TEXT, center=True)
+                draw_text(surface, str(value), (column, y), 13, Theme.BOARD_TEXT, center=True)
 
         if not self.series.is_finished:
-            hint = "Enter: next game  |  Left/Right: browse the game  |  Esc: menu"
+            hint = "Enter: next game  |  Esc: menu"
         elif self.series.total > 1:
             hint = (f"Match over: {self.series.names[0]} {self.series.wins[0]} - {self.series.wins[1]} "
                     f"{self.series.names[1]}")
         else:
-            hint = "R: play again  |  Left/Right: browse the game  |  Esc: menu"
-        draw_text(surface, fit_text(hint, 13, box.width - 24), (box.centerx, box.bottom - 24), 13, Theme.MUTED, center=True)
+            hint = "R: play again  |  Esc: menu"
+        draw_text(surface, fit_text(hint, 13, box.width - 24), (box.centerx, box.bottom - 24), 13, Theme.BOARD_MUTED, center=True)

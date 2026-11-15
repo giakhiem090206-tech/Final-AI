@@ -5,15 +5,15 @@ import tempfile
 import textwrap
 import time
 import unittest
+from dataclasses import replace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from tank_battle.agents import Agent, RandomAgent, SearchAgent
 from tank_battle.evaluation import (
-    FiringEffortMap, HeuristicEvaluator, RaceEvaluator, RaceWeights, direction_towards,
+    FiringEffortMap, RaceEvaluator, RaceWeights, direction_towards,
 )
-from tank_battle.experiments import SPARRING_PARTNERS, OpeningBook
-from tank_battle.maps import BUILTIN_MAPS, GameMap, is_point_symmetric, random_map
+from tank_battle.maps import BUILTIN_MAPS, GameMap
 from tank_battle.model import DELTAS, DRAW, Action, Bullet, Direction
 from tank_battle.plugins import PluginLoader
 from tank_battle.rules import GameRules
@@ -39,26 +39,26 @@ def random_midgame(game_map: GameMap, seed: int, cycles: int = 12):
 
 class EvaluatorTest(unittest.TestCase):
     def test_is_zero_sum_on_many_positions(self):
-        evaluator = HeuristicEvaluator()
+        evaluator = RaceEvaluator(RaceWeights(aggression=0.0))
         for game_map in BUILTIN_MAPS.values():
             for seed in range(25):
                 state = random_midgame(game_map, seed)
                 self.assertAlmostEqual(evaluator.evaluate(state, 0), -evaluator.evaluate(state, 1))
 
     def test_initial_position_of_a_fair_map_is_even(self):
-        evaluator = HeuristicEvaluator()
+        evaluator = RaceEvaluator(RaceWeights(aggression=0.0))
         for game_map in BUILTIN_MAPS.values():
             self.assertAlmostEqual(evaluator.evaluate(game_map.create_state(), 0), 0.0, msg=game_map.name)
 
     def test_stays_far_below_the_win_score(self):
-        evaluator = HeuristicEvaluator()
+        evaluator = RaceEvaluator(RaceWeights(aggression=0.0))
         for seed in range(25):
             self.assertLess(abs(evaluator.evaluate(random_midgame(BUILTIN_MAPS["Fortress"], seed), 0)), WIN_SCORE / 10)
 
     def test_more_health_is_better(self):
         state = BUILTIN_MAPS["Duel"].create_state()
         hurt = state.replace(tanks=(state.tanks[0]._replace(hp=3), state.tanks[1]))
-        evaluator = HeuristicEvaluator()
+        evaluator = RaceEvaluator(RaceWeights(aggression=0.0))
         self.assertLess(evaluator.evaluate(hurt, 0), evaluator.evaluate(state, 0))
 
 
@@ -92,8 +92,8 @@ class FiringEffortTest(unittest.TestCase):
 
     def test_agrees_with_a_slow_exact_computation_on_random_maps(self):
         """Each cell's effort must equal the best of: shots from here, or a step then its effort."""
-        for seed in range(6):
-            state = random_map(seed).create_state()
+        for seed, game_map in enumerate(BUILTIN_MAPS.values()):
+            state = game_map.create_state()
             target = state.bases[1]
             costs = FiringEffortMap().effort(state, target.x, target.y)
             blocked = {(b.x, b.y) for b in state.bases}
@@ -138,7 +138,7 @@ class RaceEvaluatorTest(unittest.TestCase):
 
     def test_initial_position_of_a_fair_map_is_even(self):
         evaluator = RaceEvaluator(self.NEUTRAL)
-        for game_map in list(BUILTIN_MAPS.values()) + [random_map(s) for s in range(10)]:
+        for game_map in BUILTIN_MAPS.values():
             self.assertAlmostEqual(evaluator.evaluate(game_map.create_state(), 0), 0.0, msg=game_map.name)
 
     def test_being_nearer_to_finishing_is_better(self):
@@ -163,18 +163,6 @@ class RaceEvaluatorTest(unittest.TestCase):
         state = GameMap("t", rows).create_state()
         wasted = state.replace(bullets=(Bullet(0, 7, 2, int(Direction.LEFT)),))
         self.assertAlmostEqual(evaluator.evaluate(wasted, 0), evaluator.evaluate(state, 0))
-
-
-class RandomMapTest(unittest.TestCase):
-    def test_random_maps_are_fair_and_reproducible(self):
-        for seed in range(60):
-            game_map = random_map(seed)
-            self.assertTrue(is_point_symmetric(game_map.rows), game_map.name)
-            game_map.create_state()
-            self.assertEqual(game_map.rows, random_map(seed).rows)
-
-    def test_seeds_give_different_maps(self):
-        self.assertGreater(len({random_map(seed).rows for seed in range(30)}), 25)
 
 
 class GoingInCirclesTest(unittest.TestCase):
@@ -204,43 +192,12 @@ class GoingInCirclesTest(unittest.TestCase):
             self.assertEqual(a.action, b.action)
 
     def test_tanks_no_longer_stall_from_the_openings_that_stalled_before(self):
-        openings = OpeningBook.generate(10, 1, ["Crossroads", "Corridors"])
+        openings = [random_midgame(BUILTIN_MAPS[name], seed, cycles=4).replace(cycle=0)
+                    for name in ("Crossroads", "Corridors") for seed in range(5)]
         for state in openings:
             agents = (SearchAgent(SearchConfig.optimized(), depth=2), SearchAgent(SearchConfig.optimized(), depth=2))
             result = HeadlessMatch(state, agents).play()
             self.assertLess(result.cycles, state.max_cycles)
-
-
-class PrincipalVariationTest(unittest.TestCase):
-    def test_plan_is_a_path_of_single_steps_from_the_tank(self):
-        for seed in range(6):
-            state = random_midgame(BUILTIN_MAPS["Fortress"], seed)
-            search = AdversarialSearch(SearchConfig.optimized())
-            result = search.search(state, 0, 3)
-            previous = (state.tanks[0].x, state.tanks[0].y)
-            plan = search.principal_variation(state, 0, result.action)
-            self.assertGreater(len(plan), 0)
-            for cell in plan:
-                self.assertLessEqual(abs(cell[0] - previous[0]) + abs(cell[1] - previous[1]), 1)
-                previous = cell
-
-    def test_agent_reports_its_plan(self):
-        agent = SearchAgent(SearchConfig.optimized(), depth=2)
-        agent.choose_action(BUILTIN_MAPS["Duel"].create_state(), 0)
-        self.assertIn("plan", agent.last_info)
-
-    def test_configurations_without_memory_report_no_plan(self):
-        agent = SearchAgent(SearchConfig.heuristic_alpha_beta(), depth=1)
-        agent.choose_action(BUILTIN_MAPS["Duel"].create_state(), 0)
-        self.assertNotIn("plan", agent.last_info)
-
-
-class SparringPartnerTest(unittest.TestCase):
-    def test_all_play_legal_games_to_the_end(self):
-        for recipe in SPARRING_PARTNERS:
-            for game_map in (BUILTIN_MAPS["Duel"], random_map(3)):
-                result = HeadlessMatch(game_map.create_state(100), (recipe.build(), RandomAgent(seed=1))).play()
-                self.assertEqual(result.records[0].faults, 0, recipe.label)
 
 
 class SearchCorrectnessTest(unittest.TestCase):
@@ -569,9 +526,9 @@ class ReferenceRaceEvaluator(RaceEvaluator):
 
 
 def varied_states(count_per_map=6):
-    """Positions from random play on built-in and random maps: damaged walls, bullets, moved tanks."""
+    """Positions from random play on the built-in maps: damaged walls, bullets, moved tanks."""
     states = []
-    maps = list(BUILTIN_MAPS.values()) + [random_map(seed) for seed in (3, 11)]
+    maps = list(BUILTIN_MAPS.values())
     for index, game_map in enumerate(maps):
         for seed in range(count_per_map):
             states.append(random_midgame(game_map, 100 * index + seed, cycles=4 + 5 * seed))
@@ -616,8 +573,12 @@ class ResumableEffortSearchTest(unittest.TestCase):
                 self.assertEqual(fast.evaluate(state, player), reference.evaluate(state, player))
 
     def test_optimizations_change_the_work_but_not_the_root_values(self):
-        from tank_battle.experiments import OptimizationAblation
-        table = OptimizationAblation(depths=(2,), repeats=1).run()
-        self.assertTrue(all(row[-1] for row in table.rows), table)
-        nodes = {row[1]: row[3] for row in table.rows}
-        self.assertLess(nodes["all three"], nodes["Heuristic Alpha-Beta"])
+        from tank_battle.experiments import ScenarioLibrary
+        plain_nodes = optimized_nodes = 0
+        for state in ScenarioLibrary.all().values():
+            plain = AdversarialSearch(SearchConfig.heuristic_alpha_beta()).search(state, 0, 2)
+            optimized = AdversarialSearch(replace(SearchConfig.optimized(), repetition_penalty=0.0)).search(state, 0, 2)
+            self.assertAlmostEqual(plain.value, optimized.value)
+            plain_nodes += plain.stats.nodes
+            optimized_nodes += optimized.stats.nodes
+        self.assertLess(optimized_nodes, plain_nodes)

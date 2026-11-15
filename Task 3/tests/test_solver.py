@@ -8,11 +8,9 @@ from itertools import permutations
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from kakuro.csp import FULL_DOMAIN, KakuroCSP, RunFilter, largest_sum, smallest_sum
-from kakuro.generator import BoardGenerator
-from kakuro.play import PlayBoard
-from kakuro.puzzle import EXAMPLE_BOARD, EXTRA_BOARD_NAME, KakuroPuzzle, PuzzleError, SolutionChecker, load_builtin
+from kakuro.puzzle import EXAMPLE_BOARD, KakuroPuzzle, PuzzleError, SolutionChecker, load_builtin
 from kakuro.solver import (
-    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_DOM_WDEG, VAR_MRV, VAR_MRV_DEGREE,
+    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_MRV, VAR_MRV_DEGREE,
     VAR_STATIC, BacktrackingSolver, SolverConfig,
 )
 
@@ -160,164 +158,13 @@ class PossibleDigitSetsTest(unittest.TestCase):
         self.assertEqual(after, [mask(5, 8, 9)])
 
 
-class GeneratorTest(unittest.TestCase):
-    def test_boards_follow_the_rules_and_have_a_solution(self):
-        for seed in range(15):
-            puzzle = BoardGenerator(9, 9, 0.25, seed).generate()
-            self.assertTrue(all(2 <= len(run.cells) <= 9 for run in puzzle.runs))
-            result = BacktrackingSolver(KakuroCSP(puzzle)).solve()
-            self.assertEqual(result.status, "solved")
-            self.assertTrue(SolutionChecker(puzzle).is_valid(result.solution))
-
-    def test_same_seed_gives_the_same_board(self):
-        first = BoardGenerator(9, 9, 0.25, 3).generate()
-        second = BoardGenerator(9, 9, 0.25, 3).generate()
-        self.assertEqual(first.grid, second.grid)
-
-    def test_repair_produces_a_unique_solution(self):
-        puzzle = BoardGenerator(7, 7, 0.3, 1).generate_unique()
-        self.assertIsNotNone(puzzle)
-        result = BacktrackingSolver(KakuroCSP(puzzle)).solve(max_solutions=2)
-        self.assertEqual(len(result.solutions), 1)
-        self.assertFalse(result.limit_reached)
-
-    def test_unique_boards_are_reproducible(self):
-        first = BoardGenerator(7, 7, 0.3, 1).generate_unique()
-        second = BoardGenerator(7, 7, 0.3, 1).generate_unique()
-        self.assertEqual(first.grid, second.grid)
-
+class LimitTest(unittest.TestCase):
     def test_a_search_cut_short_is_reported_as_such(self):
-        puzzle = BoardGenerator(16, 16, 0.25, 2).generate()
-        result = BacktrackingSolver(KakuroCSP(puzzle), SolverConfig(), max_assignments=5).solve(max_solutions=2)
+        config = SolverConfig(PROPAGATE_NONE, VAR_STATIC, VAL_ASCENDING)
+        result = BacktrackingSolver(KakuroCSP(load_builtin(COMPLEX)), config, max_assignments=5).solve(max_solutions=2)
         self.assertTrue(result.limit_reached)
         finished = BacktrackingSolver(KakuroCSP(load_builtin(EXAMPLE))).solve(max_solutions=2)
         self.assertFalse(finished.limit_reached)
-
-
-class DomWdegTest(unittest.TestCase):
-    CONFIG = SolverConfig(PROPAGATE_MAC, VAR_DOM_WDEG, VAL_ASCENDING)
-
-    def test_finds_the_right_solution(self):
-        result = BacktrackingSolver(KakuroCSP(load_builtin(EXAMPLE)), self.CONFIG).solve()
-        self.assertEqual(result.solution, EXAMPLE_SOLUTION)
-
-    def test_learns_from_dead_ends(self):
-        puzzle = BoardGenerator(16, 16, 0.25, 2).generate()
-        solver = BacktrackingSolver(KakuroCSP(puzzle), self.CONFIG, time_limit=5)
-        solver.solve()
-        if solver.stats.wipeouts:
-            self.assertGreater(max(solver.run_weights), 1)
-
-    def test_is_complete_on_every_solution_of_a_small_board(self):
-        puzzle = KakuroPuzzle("ambiguous", "X 5\\ 5\\\n\\4 . .\n\\6 . .")
-        result = BacktrackingSolver(KakuroCSP(puzzle), self.CONFIG).solve(max_solutions=100)
-        self.assertEqual(sorted(result.solutions), [[1, 3, 4, 2], [3, 1, 2, 4]])
-
-
-class RestartTest(unittest.TestCase):
-    def with_small_budget(self, csp, config):
-        solver = BacktrackingSolver(csp, config)
-        solver.RESTART_BASE = 1
-        solver.RESTART_GROWTH = 1.2
-        return solver
-
-    def test_every_built_in_board_is_solved_correctly(self):
-        for name in (EXAMPLE, COMPLEX):
-            puzzle = load_builtin(name)
-            result = BacktrackingSolver(KakuroCSP(puzzle), SolverConfig.best()).solve()
-            self.assertTrue(SolutionChecker(puzzle).is_valid(result.solution))
-
-    def test_frequent_restarts_still_give_a_valid_solution(self):
-        puzzle = BoardGenerator(13, 13, 0.25, 4).generate()
-        config = SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING, restarts=True)
-        result = self.with_small_budget(KakuroCSP(puzzle), config).solve()
-        self.assertEqual(result.status, "solved")
-        self.assertGreater(result.stats.restarts, 0)
-        self.assertTrue(SolutionChecker(puzzle).is_valid(result.solution))
-
-    def test_restarts_stay_complete_on_an_unsatisfiable_board(self):
-        csp = KakuroCSP(KakuroPuzzle("broken", EXAMPLE_BOARD.replace("\\21", "\\22")))
-        config = SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING, restarts=True)
-        self.assertEqual(self.with_small_budget(csp, config).solve().status, "unsatisfiable")
-
-    def test_counting_solutions_never_restarts(self):
-        puzzle = BoardGenerator(13, 13, 0.25, 4).generate()
-        solver = BacktrackingSolver(KakuroCSP(puzzle), SolverConfig.best(), time_limit=2)
-        solver.solve(max_solutions=2)
-        self.assertEqual(solver.stats.restarts, 0)
-
-    def test_domains_are_restored_at_each_restart(self):
-        csp = KakuroCSP(KakuroPuzzle("broken", EXAMPLE_BOARD.replace("\\21", "\\22")))
-        config = SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING, restarts=True)
-        solver = self.with_small_budget(csp, config)
-        solver.solve()
-        self.assertEqual(solver.assignment, [0] * csp.num_variables)
-
-
-class PlayBoardTest(unittest.TestCase):
-    def setUp(self):
-        self.csp = KakuroCSP(load_builtin(EXAMPLE))
-        self.board = PlayBoard(self.csp)
-
-    def test_correct_entries_finish_the_game(self):
-        for cell, digit in enumerate(EXAMPLE_SOLUTION):
-            self.assertFalse(self.board.is_solved())
-            self.board.set_value(cell, digit)
-            self.assertEqual(self.board.conflicts(), set())
-        self.assertTrue(self.board.is_solved())
-
-    def test_a_repeated_digit_marks_both_cells(self):
-        first, second = self.csp.runs[0].cells[:2]
-        self.board.set_value(first, 5)
-        self.board.set_value(second, 5)
-        self.assertTrue({first, second} <= self.board.conflicts())
-
-    def test_a_clue_out_of_reach_is_a_conflict(self):
-        run = next(r for r in self.csp.runs if r.clue == 11 and len(r.cells) == 4)  # at most 10 + 1 spare
-        self.board.set_value(run.cells[0], 9)
-        self.assertIn(run.cells[0], self.board.conflicts())
-
-    def test_a_full_run_must_match_its_clue(self):
-        run = next(r for r in self.csp.runs if r.clue == 16)
-        self.board.set_value(run.cells[0], 1)
-        self.board.set_value(run.cells[1], 2)
-        self.assertTrue(set(run.cells) <= self.board.conflicts())
-
-    def test_clearing_removes_the_conflict(self):
-        first, second = self.csp.runs[0].cells[:2]
-        self.board.set_value(first, 5)
-        self.board.set_value(second, 5)
-        self.board.clear(second)
-        self.assertNotIn(first, self.board.conflicts())
-
-    def test_candidates_follow_the_entries(self):
-        csp = KakuroCSP(load_builtin(EXTRA_BOARD_NAME))  # propagation alone does not settle this board
-        board = PlayBoard(csp)
-        solution = board.solution()
-        before = board.candidates()
-        cell = next(i for i, mask_value in enumerate(before) if bin(mask_value).count("1") > 1)
-        board.set_value(cell, solution[cell])
-        after = board.candidates()
-        self.assertTrue(all(new & ~old == 0 for old, new in zip(before, after)))
-        self.assertLess(sum(bin(m).count("1") for m in after), sum(bin(m).count("1") for m in before))
-
-    def test_wrong_entries_can_make_candidates_impossible(self):
-        run = next(r for r in self.csp.runs if r.clue == 16)
-        self.board.set_value(run.cells[0], 1)
-        self.assertIsNone(self.board.candidates())
-
-    def test_hints_finish_the_board_correctly_even_after_mistakes(self):
-        self.board.set_value(0, 1 if EXAMPLE_SOLUTION[0] != 1 else 2)  # a wrong digit
-        for _ in range(len(EXAMPLE_SOLUTION) + 1):
-            hint = self.board.hint()
-            if hint is None:
-                break
-            self.board.set_value(*hint)
-        self.assertEqual(self.board.values, EXAMPLE_SOLUTION)
-        self.assertIsNone(self.board.hint())
-
-    def test_hint_prefers_the_selected_cell(self):
-        self.assertEqual(self.board.hint(3), (3, EXAMPLE_SOLUTION[3]))
 
 
 class BoundsTest(unittest.TestCase):
@@ -436,7 +283,7 @@ class ReferenceRunFilter(RunFilter):
 
 
 class ReferenceSolver(BacktrackingSolver):
-    """Variable selection as first written: degree and dom/wdeg weights recounted cell by cell."""
+    """Variable selection as first written: the degree recounted cell by cell."""
 
     def _select_variable(self):
         from kakuro.csp import POPCOUNT
@@ -444,33 +291,18 @@ class ReferenceSolver(BacktrackingSolver):
         order = self.config.variable_order
         if order == VAR_STATIC:
             return next((v for v in self.static_order if assignment[v] == 0), None)
-        if order == VAR_DOM_WDEG:
-            best, best_ratio = [], 0.0
-            for variable, value in enumerate(assignment):
-                if value != 0:
-                    continue
-                weight = 0
-                for run_index in self.csp.runs_of[variable]:
-                    if any(assignment[c] == 0 and c != variable for c in self.csp.runs[run_index].cells):
-                        weight += self.run_weights[run_index]
-                ratio = POPCOUNT[domains[variable]] / max(weight, 1)
-                if not best or ratio < best_ratio:
-                    best_ratio, best = ratio, [variable]
-                elif ratio == best_ratio:
-                    best.append(variable)
-        else:
-            best, best_key = [], None
-            for variable, value in enumerate(assignment):
-                if value != 0:
-                    continue
-                degree = 0
-                if order == VAR_MRV_DEGREE:
-                    degree = sum(1 for peer in self.csp.peers[variable] if assignment[peer] == 0)
-                key = (POPCOUNT[domains[variable]], -degree)
-                if best_key is None or key < best_key:
-                    best_key, best = key, [variable]
-                elif key == best_key:
-                    best.append(variable)
+        best, best_key = [], None
+        for variable, value in enumerate(assignment):
+            if value != 0:
+                continue
+            degree = 0
+            if order == VAR_MRV_DEGREE:
+                degree = sum(1 for peer in self.csp.peers[variable] if assignment[peer] == 0)
+            key = (POPCOUNT[domains[variable]], -degree)
+            if best_key is None or key < best_key:
+                best_key, best = key, [variable]
+            elif key == best_key:
+                best.append(variable)
         if not best:
             return None
         return self.rng.choice(best) if self.rng is not None else best[0]
@@ -480,12 +312,11 @@ class FasterSolverEquivalenceTest(unittest.TestCase):
     """The faster variable selection and run filter must make exactly the same search."""
 
     def test_same_search_as_the_plain_implementation(self):
-        boards = [load_builtin(COMPLEX), load_builtin(EXTRA_BOARD_NAME)]
-        boards += [BoardGenerator(12, 12, 0.22, seed).generate() for seed in range(4)]
+        boards = [load_builtin(EXAMPLE), load_builtin(COMPLEX)]
         configs = [SolverConfig(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_ASCENDING),
                    SolverConfig(PROPAGATE_MAC, VAR_MRV_DEGREE, VAL_LCV),
                    SolverConfig(PROPAGATE_FC, VAR_MRV_DEGREE, VAL_ASCENDING),
-                   SolverConfig(PROPAGATE_FC, VAR_DOM_WDEG, VAL_ASCENDING),
+                   SolverConfig(PROPAGATE_FC, VAR_STATIC, VAL_ASCENDING),
                    SolverConfig(PROPAGATE_MAC, VAR_MRV, VAL_ASCENDING),
                    SolverConfig.best()]
         for puzzle in boards:

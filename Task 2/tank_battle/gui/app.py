@@ -57,6 +57,8 @@ class TankBattleApp:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                    pygame.display.toggle_fullscreen()
                 else:
                     self.screen.handle(event)
             self.screen.update(milliseconds)

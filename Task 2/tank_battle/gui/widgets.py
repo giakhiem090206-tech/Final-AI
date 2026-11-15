@@ -15,18 +15,20 @@ class Button:
         self.label = label
         self.on_click = on_click
         self.accent = accent
+        self.enabled = True
 
     def handle(self, event: pygame.event.Event) -> bool:
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos):
+        if (self.enabled and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                and self.rect.collidepoint(event.pos)):
             self.on_click()
             return True
         return False
 
     def draw(self, surface: pygame.Surface) -> None:
-        hovered = self.rect.collidepoint(pygame.mouse.get_pos())
+        hovered = self.enabled and self.rect.collidepoint(pygame.mouse.get_pos())
         color = Theme.ACCENT if self.accent else (Theme.CARD_HOVER if hovered else Theme.CARD)
         pygame.draw.rect(surface, color, self.rect, border_radius=7)
-        text_color = Theme.BACKGROUND if self.accent else Theme.TEXT
+        text_color = Theme.BACKGROUND if self.accent else (Theme.TEXT if self.enabled else Theme.FAINT)
         draw_text(surface, self.label, self.rect.center, 15, text_color, bold=self.accent, center=True)
 
 

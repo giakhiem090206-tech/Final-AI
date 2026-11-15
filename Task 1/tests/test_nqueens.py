@@ -9,12 +9,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from nqueens.board import Placement
 from nqueens.encoding import (
-    AuxiliaryVariables, CnfEncoder, ConstraintDiscovery, PairwiseEncoding, SequentialCounterEncoding, SquareVariables,
+    CnfEncoder, ConstraintDiscovery, SquareVariables, at_most_one,
 )
 from nqueens.min_conflicts import (
     ConflictTracker,
     MinConflictsSolver,
-    MostConflictedSelector,
     MostConflictedTabuSelector,
     RandomConflictedSelector,
 )
@@ -37,6 +36,10 @@ class PlacementTest(unittest.TestCase):
 
 
 class EncodingTest(unittest.TestCase):
+    def test_at_most_one_is_one_clause_per_pair(self):
+        self.assertEqual(at_most_one([1, 2, 3]), [[-1, -2], [-1, -3], [-2, -3]])
+        self.assertEqual(at_most_one([7]), [])
+
     def test_variable_mapping_is_a_bijection(self):
         variables = SquareVariables(7)
         seen = {variables.variable(r, c) for r in range(7) for c in range(7)}
@@ -75,73 +78,6 @@ class EncodingTest(unittest.TestCase):
                     self.assertTrue(Placement(n, queens).is_solution())
                     count += 1
             self.assertEqual(count, expected, f"N={n}")
-
-
-class SequentialCounterTest(unittest.TestCase):
-    def satisfying_assignments(self, literals_count, encoding):
-        """Assignments of the x variables that some setting of the extra variables satisfies."""
-        from itertools import product
-
-        from pysat.solvers import Glucose3
-
-        literals = list(range(1, literals_count + 1))
-        clauses = encoding.encode(literals, AuxiliaryVariables(literals_count + 1))
-        allowed = set()
-        with Glucose3(bootstrap_with=clauses) as solver:
-            for values in product((False, True), repeat=literals_count):
-                assumptions = [lit if value else -lit for lit, value in zip(literals, values)]
-                if solver.solve(assumptions=assumptions):
-                    allowed.add(values)
-        return allowed
-
-    def test_means_exactly_at_most_one(self):
-        for k in range(2, 11):
-            allowed = self.satisfying_assignments(k, SequentialCounterEncoding())
-            expected = {tuple(i == j for j in range(k)) for i in range(k)} | {(False,) * k}
-            self.assertEqual(allowed, expected, f"k={k}")
-
-    def test_clause_and_variable_counts_of_a_long_line(self):
-        k = 20
-        auxiliary = AuxiliaryVariables(k + 1)
-        clauses = SequentialCounterEncoding().encode(list(range(1, k + 1)), auxiliary)
-        self.assertEqual(len(clauses), 3 * k - 4)
-        self.assertEqual(auxiliary.next - (k + 1), k - 1)
-
-    def test_short_lines_use_the_smaller_pairwise_form(self):
-        auxiliary = AuxiliaryVariables(10)
-        clauses = SequentialCounterEncoding().encode([1, 2, 3], auxiliary)
-        self.assertEqual(len(clauses), 3)
-        self.assertEqual(auxiliary.next, 10)
-
-    def test_models_project_to_exactly_the_real_solutions(self):
-        from pysat.solvers import Glucose3
-
-        for n, expected in KNOWN_SOLUTION_COUNTS.items():
-            encoder = CnfEncoder(n, SequentialCounterEncoding())
-            found = set()
-            with Glucose3(bootstrap_with=encoder.encode().clauses) as solver:
-                while solver.solve():
-                    queens = encoder.queens_in_model(solver.get_model())
-                    self.assertTrue(Placement(n, queens).is_solution())
-                    found.add(frozenset(queens))
-                    # Exclude this placement, whatever values the extra variables took.
-                    solver.add_clause([-encoder.variables.variable(r, c) for r, c in queens])
-            self.assertEqual(len(found), expected, f"N={n}")
-
-    def test_much_smaller_than_pairwise_on_large_boards(self):
-        for n in (50, 120):
-            pairwise = CnfEncoder(n, PairwiseEncoding()).encode().num_clauses
-            sequential = CnfEncoder(n, SequentialCounterEncoding()).encode().num_clauses
-            self.assertLess(sequential * 4, pairwise)
-
-    def test_solver_gives_valid_solutions(self):
-        for n in (4, 8, 20, 60, 150):
-            result = Glucose3QueensSolver(SequentialCounterEncoding()).solve(n)
-            self.assertTrue(result.placement.is_solution())
-
-    def test_still_reports_unsatisfiable_boards(self):
-        for n in (2, 3):
-            self.assertFalse(Glucose3QueensSolver(SequentialCounterEncoding()).solve(n).satisfiable)
 
 
 class SatSolverTest(unittest.TestCase):
@@ -208,7 +144,7 @@ class ConflictTrackerTest(unittest.TestCase):
 
 
 class MinConflictsTest(unittest.TestCase):
-    SELECTORS = (RandomConflictedSelector, MostConflictedSelector, MostConflictedTabuSelector)
+    SELECTORS = (RandomConflictedSelector, MostConflictedTabuSelector)
 
     def test_every_returned_solution_is_valid(self):
         for selector_cls in self.SELECTORS:
@@ -247,10 +183,6 @@ class MinConflictsTest(unittest.TestCase):
         result = MinConflictsSolver(RandomConflictedSelector(), max_steps=1).solve(200, seed=1)
         self.assertLessEqual(result.steps, 1)
         self.assertFalse(result.solved)
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class ReferenceTabuSelector(MostConflictedTabuSelector):
@@ -343,17 +275,6 @@ class FasterSelectionTest(unittest.TestCase):
             checked += 1
         self.assertGreater(checked, 50)
 
-    def test_most_conflicted_picks_among_the_rows_with_the_most_conflicts(self):
-        rng = random.Random(6)
-        for _ in range(40):
-            tracker = self.random_tracker(rng, 15, rng.randrange(20))
-            if not tracker.conflicted:
-                continue
-            worst = max(tracker.conflicts)
-            expected = {row for row in tracker.conflicted if tracker.conflicts[row] == worst}
-            picked = {MostConflictedSelector().select(tracker, 0, random.Random(seed)) for seed in range(200)}
-            self.assertEqual(picked, expected)
-
     def test_buckets_hold_exactly_the_rows_with_each_conflict_count(self):
         rng = random.Random(8)
         for n in (1, 4, 13, 40):
@@ -374,3 +295,7 @@ class FasterSelectionTest(unittest.TestCase):
         for step, row in enumerate((4, 5, 6, 7)):
             selector.notify_move(row, step)
         self.assertEqual(list(selector._recent), [5, 6, 7])
+
+
+if __name__ == "__main__":
+    unittest.main()

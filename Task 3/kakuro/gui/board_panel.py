@@ -145,38 +145,3 @@ class BoardPanel:
                 draw_text(surface, str(digit), position, font, Theme.DIGIT, center=True)
             else:
                 draw_text(surface, str(digit), position, font, ghost, center=True)
-
-    # ---------------------------------------------------------------------- play
-    PLAY_SELECTED = (238, 238, 238)  # the fill kakuros.com gives the cell being edited
-
-    def draw_play(self, surface: pygame.Surface, values: Sequence[int], conflicts: Set[int],
-                  selected: Optional[int], candidates: Optional[Sequence[int]], csp: KakuroCSP) -> None:
-        """The board as a person plays it: digits in order are green, digits that break a rule are red."""
-        puzzle = self.puzzle
-        selected_runs = [csp.runs[r] for r in csp.runs_of[selected]] if selected is not None else []
-        selected_cells = {cell for run in selected_runs for cell in run.cells}
-        for r in range(puzzle.height):
-            for c in range(puzzle.width):
-                rect = self._rect(r, c)
-                if not puzzle.is_white(r, c):
-                    self._draw_black(surface, rect, r, c, selected_runs)
-                    pygame.draw.rect(surface, Theme.GRID, rect, 1)
-                    continue
-                index = puzzle.cell_index(r, c)
-                if index == selected:
-                    fill = self.PLAY_SELECTED
-                elif index in selected_cells:
-                    fill = Theme.RUN_FILL
-                else:
-                    fill = Theme.WHITE_CELL
-                pygame.draw.rect(surface, fill, rect)
-                if values[index]:
-                    color = Theme.BAD if index in conflicts else Theme.USER_DIGIT
-                    draw_text(surface, str(values[index]), rect.center, self.size * 3 // 5, color, bold=True, center=True)
-                elif candidates is not None:
-                    self._draw_candidates(surface, rect, candidates[index], fill=fill)
-                pygame.draw.rect(surface, Theme.GRID, rect, 1)
-        if selected is not None:
-            r, c = puzzle.cells[selected]
-            pygame.draw.rect(surface, Theme.ACCENT, self._rect(r, c).inflate(-1, -1), 3)
-        self._draw_frame(surface)

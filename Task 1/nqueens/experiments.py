@@ -7,11 +7,10 @@ import platform
 import statistics
 from typing import Callable, Dict, List, Sequence
 
-from .encoding import CnfEncoder, PairwiseEncoding, SequentialCounterEncoding
+from .encoding import CnfEncoder
 from .min_conflicts import (
     MinConflictsResult,
     MinConflictsSolver,
-    MostConflictedSelector,
     MostConflictedTabuSelector,
     RandomConflictedSelector,
     VariableSelector,
@@ -89,51 +88,12 @@ class SatExperiment:
         return table
 
 
-class EncodingExperiment:
-    """Pairwise against sequential-counter AtMostOne: formula size and running time.
-
-    Pairwise is skipped above `pairwise_limit`, where its clause lists alone would need
-    gigabytes of memory.
-    """
-
-    DEFAULT_SIZES = (8, 16, 32, 64, 100, 120, 150, 200, 300)
-
-    def __init__(self, sizes: Sequence[int] = DEFAULT_SIZES, repeats: int = 3, pairwise_limit: int = 120) -> None:
-        self.sizes = sizes
-        self.repeats = repeats
-        self.pairwise_limit = pairwise_limit
-
-    def run(self, on_row: Callable[[int], None] = lambda n: None) -> ResultTable:
-        table = ResultTable(["N", "encoding", "variables", "clauses", "encode_ms", "load_ms", "solve_ms", "total_ms",
-                             "conflicts", "valid"])
-        for n in self.sizes:
-            on_row(n)
-            for encoding_class in (PairwiseEncoding, SequentialCounterEncoding):
-                if encoding_class is PairwiseEncoding and n > self.pairwise_limit:
-                    table.add(n, encoding_class.name, "skipped", CnfEncoder.expected_clause_count(n),
-                              "-", "-", "-", "-", "-", "-")
-                    continue
-                solver = Glucose3QueensSolver(encoding_class())
-                results = [solver.solve(n) for _ in range(self.repeats)]
-                last = results[-1]
-
-                def median_ms(pick: Callable[[SatResult], float]) -> float:
-                    return statistics.median(pick(r) for r in results) * 1000
-
-                table.add(n, encoding_class.name, last.num_variables, last.num_clauses,
-                          median_ms(lambda r: r.encode_seconds), median_ms(lambda r: r.load_seconds),
-                          median_ms(lambda r: r.solve_seconds), median_ms(lambda r: r.total_seconds),
-                          last.conflicts,
-                          all(r.placement is not None and r.placement.is_solution() for r in results))
-        return table
-
-
 class MinConflictsExperiment:
-    """Paired comparison of variable-selection strategies.
+    """Paired comparison of standard Min-Conflicts and the proposed heuristic.
 
     For each N and seed every strategy starts from the same initial assignment, so
     differences come from the strategy rather than from a lucky start. The order of
-    the strategies rotates with the seed so no strategy always runs first.
+    the two strategies alternates with the seed so neither always runs first.
     """
 
     DEFAULT_SIZES = (8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)
@@ -145,7 +105,6 @@ class MinConflictsExperiment:
         self.seeds = seeds
         self.factories: List[Callable[[], VariableSelector]] = [
             RandomConflictedSelector,
-            MostConflictedSelector,
             MostConflictedTabuSelector,
         ]
 

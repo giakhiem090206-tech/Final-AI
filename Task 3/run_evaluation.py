@@ -9,7 +9,6 @@ import os
 from kakuro.evaluation import (
     CorrectnessEvaluation,
     EffectivenessEvaluation,
-    HardBoardEvaluation,
     StabilityEvaluation,
     machine_description,
 )
@@ -27,7 +26,6 @@ def main() -> None:
     report("Correctness", CorrectnessEvaluation().run(), "correctness.csv")
     report("Effectiveness", EffectivenessEvaluation().run(), "effectiveness.csv")
     report("Stability", StabilityEvaluation().run(lambda text: print(f"  ... {text}", flush=True)), "stability.csv")
-    report("Hard random boards", HardBoardEvaluation().run(lambda text: print(f"  ... {text}", flush=True)), "hard_boards.csv")
 
 
 if __name__ == "__main__":

@@ -22,119 +22,6 @@ class Evaluator(ABC):
         """Estimated value of a non-terminal state for `player`."""
 
 
-class PathCostMap:
-    """Cheapest way to reach each cell from a target, counting walls as obstacles to shoot.
-
-    Entering a free cell costs 1; entering a wall costs 1 + its HP (the shots to clear it
-    and the move). Dijkstra runs only when the walls changed: inside a search tree walls
-    rarely change, so almost every query is answered from the cache.
-    """
-
-    MAX_CACHED = 2048
-
-    def __init__(self) -> None:
-        self._cache: Dict[Tuple[int, int], List[int]] = {}
-
-    def costs_to(self, state: GameState, target_x: int, target_y: int) -> List[int]:
-        target = target_y * state.width + target_x
-        key = (target, state.walls_key)
-        costs = self._cache.get(key)
-        if costs is None:
-            if len(self._cache) >= self.MAX_CACHED:
-                self._cache.clear()
-            costs = self._dijkstra(state, target)
-            self._cache[key] = costs
-        return costs
-
-    @staticmethod
-    def _dijkstra(state: GameState, target: int) -> List[int]:
-        width, height, walls = state.width, state.height, state.walls
-        blocked = {base.y * width + base.x for base in state.bases}
-        unreachable = width * height * 8
-        costs = [unreachable] * (width * height)
-        costs[target] = 0
-        heap = [(0, target)]
-        while heap:
-            cost, cell = heapq.heappop(heap)
-            if cost > costs[cell]:
-                continue
-            y, x = divmod(cell, width)
-            # The step from `cell` to a neighbour is paid for entering `cell` on the way back,
-            # which charges walls correctly when walking from a tank towards the target.
-            step = 1 + walls.get(cell, 0)
-            for dx, dy in DELTAS:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < width and 0 <= ny < height:
-                    neighbour = ny * width + nx
-                    if neighbour not in blocked and cost + step < costs[neighbour]:
-                        costs[neighbour] = cost + step
-                        heapq.heappush(heap, (cost + step, neighbour))
-        return costs
-
-
-@dataclass(frozen=True)
-class EvaluationWeights:
-    tank_hp: float = 10.0        # per hit point of the player's tank
-    base_hp: float = 7.0         # per hit point of the player's base
-    bullet_at_tank: float = 5.0  # bullet heading for the tank (it may still dodge)
-    bullet_at_base: float = 7.0  # bullet heading for the base (a base cannot dodge)
-    line_to_tank: float = 2.0    # clear line of fire to the enemy tank
-    line_to_base: float = 2.5    # clear line of fire to the enemy base
-    aiming: float = 2.0          # ... and already facing along that line
-    path_cost: float = 0.6       # per unit of path cost to the enemy base
-
-
-class HeuristicEvaluator(Evaluator):
-    """Weighted features of each side; EVAL is one side minus the other, so it is zero-sum.
-
-    The features estimate what the search cannot yet see: damage already on its way
-    (bullets in flight), damage that could be dealt next (lines of fire, aiming) and
-    how far the tank still has to go to threaten the enemy base.
-    """
-
-    def __init__(self, weights: Optional[EvaluationWeights] = None,
-                 path_costs: Optional[PathCostMap] = None) -> None:
-        self.weights = weights or EvaluationWeights()
-        self.path_costs = path_costs or PathCostMap()
-
-    def evaluate(self, state: GameState, player: int) -> float:
-        score = self._assets_and_bullets(state) + self._threats(state, 0) - self._threats(state, 1)
-        return score if player == 0 else -score
-
-    def _assets_and_bullets(self, state: GameState) -> float:
-        """HP difference, counting bullets in flight as the damage they are about to do."""
-        w = self.weights
-        tank0, tank1 = state.tanks
-        base0, base1 = state.bases
-        score = (w.tank_hp * (tank0.hp - tank1.hp) + w.base_hp * (base0.hp - base1.hp))
-        for bullet in state.bullets:
-            hit = first_hit(state, bullet.x, bullet.y, bullet.direction)
-            if hit == _HIT_TANK0:
-                score -= w.bullet_at_tank
-            elif hit == _HIT_TANK1:
-                score += w.bullet_at_tank
-            elif hit == _HIT_BASE0:
-                score -= w.bullet_at_base
-            elif hit == _HIT_BASE1:
-                score += w.bullet_at_base
-        return score
-
-    def _threats(self, state: GameState, player: int) -> float:
-        """What `player`'s tank could do next, and how close it is to the enemy base."""
-        w = self.weights
-        tank = state.tanks[player]
-        enemy = state.tanks[1 - player]
-        base = state.bases[1 - player]
-        score = -w.path_cost * self.path_costs.costs_to(state, base.x, base.y)[tank.y * state.width + tank.x]
-        direction = direction_towards(tank.x, tank.y, enemy.x, enemy.y)
-        if direction is not None and first_hit(state, tank.x, tank.y, direction) == _TANK_HIT[1 - player]:
-            score += w.line_to_tank + (w.aiming if tank.facing == direction else 0.0)
-        direction = direction_towards(tank.x, tank.y, base.x, base.y)
-        if direction is not None and first_hit(state, tank.x, tank.y, direction) == _BASE_HIT[1 - player]:
-            score += w.line_to_base + (w.aiming if tank.facing == direction else 0.0)
-        return score
-
-
 INFINITE_EFFORT = float("inf")
 
 
@@ -269,7 +156,7 @@ class FiringEffortMap:
 
 @dataclass(frozen=True)
 class RaceWeights:
-    """Values found by run_tuning.py, by hill climbing on the results of games."""
+    """Values found by trial and error in games of the controller against itself."""
 
     tank_hp: float = 10.0         # per hit point of the tank
     base_hp: float = 8.75         # per hit point of the base

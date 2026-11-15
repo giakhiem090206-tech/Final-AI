@@ -192,28 +192,11 @@ X     12\28  .     .     .     .      \12   .     .
 X     \16    .     .     \8    .      .     .     X
 """
 
-# Not from the statement. MAC solves both boards above without any search, which leaves
-# nothing to see of backtracking under MAC. This one, from BoardGenerator(10, 10, 0.27, 18),
-# makes MAC search for real. Like most random boards it has many solutions (at least 50).
-EXTRA_BOARD = r"""
-X      X      16\    11\    X      35\    23\    9\     X      X
-X      \17    .      .      22\14  .      .      .      X      X
-X      \26    .      .      .      .      .      .      X      X
-X      X      X      14\21  .      .      .      X      X      X
-X      X      24\14  .      .      .      .      X      X      X
-X      27\7   .      .      \13    .      .      21\    9\     X
-\17    .      .      .      \25    .      .      .      .      X
-\9     .      .      7\     X      13\    13\3   .      .      X
-\19    .      .      .      \20    .      .      .      X      X
-\18    .      .      .      \21    .      .      .      X      X
-"""
-
-EXTRA_BOARD_NAME = "Extra (10x10)"
 STATEMENT_PUZZLES = {
     "Example (5x5)": EXAMPLE_BOARD,
     "Complex (9x9)": COMPLEX_BOARD,
 }
-BUILTIN_PUZZLES = {**STATEMENT_PUZZLES, EXTRA_BOARD_NAME: EXTRA_BOARD}
+BUILTIN_PUZZLES = dict(STATEMENT_PUZZLES)
 
 
 def load_builtin(name: str) -> KakuroPuzzle:

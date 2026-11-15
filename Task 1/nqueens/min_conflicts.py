@@ -9,10 +9,10 @@ from __future__ import annotations
 import random
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from operator import add
 from time import perf_counter
-from typing import Deque, List, Optional, Sequence, Set
+from typing import Deque, List, Optional, Sequence, Set, Tuple
 
 from .board import Placement
 
@@ -168,15 +168,6 @@ class RandomConflictedSelector(VariableSelector):
         return rng.choice(tracker.conflicted)
 
 
-class MostConflictedSelector(VariableSelector):
-    """The variable with the most conflicts, ties broken at random (no memory)."""
-
-    name = "most-conflicted"
-
-    def select(self, tracker: ConflictTracker, step: int, rng: random.Random) -> int:
-        return rng.choice(tracker.buckets[tracker.top_count()])
-
-
 class MostConflictedTabuSelector(VariableSelector):
     """Proposed heuristic: most-conflicted variable that was not repaired recently.
 
@@ -187,8 +178,9 @@ class MostConflictedTabuSelector(VariableSelector):
     """
 
     name = "most-conflicted+tabu"
+    DEFAULT_TENURE = 8
 
-    def __init__(self, tenure: int = 8) -> None:
+    def __init__(self, tenure: int = DEFAULT_TENURE) -> None:
         self.tenure = tenure
         self._recent: Deque[int] = deque(maxlen=tenure)  # rows repaired in the last `tenure` steps
 
@@ -213,6 +205,10 @@ class MostConflictedTabuSelector(VariableSelector):
         self._recent.append(variable)
 
 
+# Variable-selection strategies by their command-line / interface key.
+SELECTORS = {"standard": RandomConflictedSelector, "tabu": MostConflictedTabuSelector}
+
+
 @dataclass
 class MinConflictsResult:
     n: int
@@ -222,6 +218,32 @@ class MinConflictsResult:
     seconds: float
     remaining_conflicts: int
     placement: Optional[Placement]
+    restarts: int = 0
+
+
+@dataclass
+class MinConflictsAttempt:
+    """One run from a random assignment: where it started and every repair it made."""
+
+    seed: int
+    initial: List[int]
+    moves: List[Tuple[int, int, int]] = field(default_factory=list)  # (row, old column, new column)
+
+
+class MinConflictsTrace:
+    """Optional recorder given to the solver, so that a viewer can replay the search.
+
+    Recording does not change the search: it consumes no random numbers.
+    """
+
+    def __init__(self) -> None:
+        self.attempts: List[MinConflictsAttempt] = []
+
+    def begin(self, seed: int, queens: Sequence[int]) -> None:
+        self.attempts.append(MinConflictsAttempt(seed, list(queens)))
+
+    def record(self, row: int, old: int, new: int) -> None:
+        self.attempts[-1].moves.append((row, old, new))
 
 
 class MinConflictsSolver:
@@ -240,18 +262,27 @@ class MinConflictsSolver:
     def default_max_steps(self, n: int) -> int:
         return max(2000, 100 * n)
 
-    def solve(self, n: int, seed: int = 0) -> MinConflictsResult:
+    def solve(self, n: int, seed: int = 0, trace: Optional[MinConflictsTrace] = None,
+              initial: Optional[Sequence[int]] = None) -> MinConflictsResult:
+        """`initial` (column of each row) replaces the random start, e.g. a board set by hand."""
+        if initial is not None and (len(initial) != n or any(not 0 <= col < n for col in initial)):
+            raise ValueError("the initial assignment needs one column in 0..N-1 for each row")
         rng = random.Random(f"search-{n}-{seed}")
-        tracker = ConflictTracker(self.random_assignment(n, seed))
+        tracker = ConflictTracker(initial if initial is not None else self.random_assignment(n, seed))
         max_steps = self.max_steps if self.max_steps is not None else self.default_max_steps(n)
         selector = self.selector
         selector.reset(n)
+        if trace is not None:
+            trace.begin(seed, tracker.queens)
 
         start = perf_counter()
         step = 0
         while step < max_steps and tracker.conflicted:
             variable = selector.select(tracker, step, rng)
-            tracker.move(variable, self._min_conflict_value(tracker, variable, rng))
+            value = self._min_conflict_value(tracker, variable, rng)
+            if trace is not None:
+                trace.record(variable, tracker.queens[variable], value)
+            tracker.move(variable, value)
             selector.notify_move(variable, step)
             step += 1
         elapsed = perf_counter() - start
@@ -267,22 +298,25 @@ class MinConflictsSolver:
             placement=Placement.from_columns(tracker.queens) if solved else None,
         )
 
-    def solve_with_restarts(self, n: int, seed: int = 0, max_restarts: int = 50) -> MinConflictsResult:
+    def solve_with_restarts(self, n: int, seed: int = 0, max_restarts: int = 50,
+                            trace: Optional[MinConflictsTrace] = None,
+                            initial: Optional[Sequence[int]] = None) -> MinConflictsResult:
         """Restart from a new random assignment whenever the step limit is reached.
 
         On small boards (about N = 6..16) a run can end in a local minimum that no
         variable-selection rule can leave, because it is the min-conflict value choice
         that keeps every queen in place. A restart is what escapes it. The experiments
         call `solve` directly, so that these failures stay visible in the results.
+        Only the first attempt starts from `initial`; restarts are random.
         """
         steps, seconds = 0, 0.0
         for attempt in range(max_restarts + 1):
-            result = self.solve(n, seed + attempt)
+            result = self.solve(n, seed + attempt, trace, initial if attempt == 0 else None)
             steps += result.steps
             seconds += result.seconds
             if result.solved:
                 break
-        result.steps, result.seconds = steps, seconds
+        result.steps, result.seconds, result.restarts = steps, seconds, attempt
         return result
 
     @staticmethod

@@ -1,0 +1,4 @@
+python-sat
+pygame-ce
+matplotlib
+notebook

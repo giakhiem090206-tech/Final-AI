@@ -10,10 +10,9 @@ import pygame
 
 from kakuro.csp import KakuroCSP
 from kakuro.gui import VisualizerApp
-from kakuro.gui.play_screen import digit_combinations
-from kakuro.puzzle import EXTRA_BOARD_NAME, load_builtin
+from kakuro.puzzle import load_builtin
 from kakuro.solver import (
-    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_DOM_WDEG, VAR_MRV_DEGREE, VAR_STATIC,
+    PROPAGATE_FC, PROPAGATE_MAC, PROPAGATE_NONE, VAL_ASCENDING, VAL_LCV, VAR_MRV_DEGREE, VAR_STATIC,
     BacktrackingSolver, SolverConfig,
 )
 from kakuro.trace import ASSIGN, BACKTRACK, FINISH, SOLUTION, START, Replay, SearchTree, TraceRecorder
@@ -221,223 +220,20 @@ class InterfaceTest(unittest.TestCase):
         self.assertTrue(runs)
         self.assertTrue(all(run.start == clue_position for run in runs))
 
-    def test_dom_wdeg_option_is_offered_and_solves(self):
+    def test_default_is_mac_with_the_lecture_heuristics(self):
         app = self.app
-        self.assertEqual(app.variable_choice.value, VAR_DOM_WDEG)
+        self.assertEqual(app.current_config(), SolverConfig.best())
         self.assertTrue(app.valid)
 
-    def test_extra_board_makes_mac_search(self):
+    def test_forward_checking_with_a_fixed_order_shows_backtracking(self):
         app = self.app
-        app.puzzle_choice.selected = app.names.index(EXTRA_BOARD_NAME)
+        app.propagation_choice.selected = 1  # forward checking
+        app.variable_choice.selected = 0     # fixed order
+        app.value_choice.selected = 0        # ascending
         app.rebuild()
-        self.assertEqual(app.propagation_choice.value, PROPAGATE_MAC)
         self.assertGreater(app.result.stats.backtracks, 0)
         self.assertTrue(app.valid)
-
-    def _enter_play_mode(self, board_name=None):
-        app = self.app
-        app.mode_choice.handle(click(app.mode_choice._cell(1).center))
-        self.assertEqual(app.mode, "play")
-        if board_name is not None:
-            app.play.boards.selected = app.play.boards.options.index((board_name, board_name))
-            app.play._board_chosen()
-        return app.play
-
-    def test_play_mode_full_game_with_the_keyboard(self):
-        play = self._enter_play_mode(EXAMPLE)
-        solution = BacktrackingSolver(KakuroCSP(load_builtin(EXAMPLE))).solve().solution
-        for cell, digit in enumerate(solution):
-            r, c = play.puzzle.cells[cell]
-            self.app.handle(click(play.view.cell_rect(r, c).center))
-            self.assertEqual(play.selected, cell)
-            self.app.handle(pygame.event.Event(pygame.KEYDOWN, key=getattr(pygame, f"K_{digit}")))
-            self.app.draw()
-        self.assertTrue(play.board.is_solved())
-        self.assertTrue(play.solved)
-
-    def test_play_mode_backspace_arrows_candidates_and_hint(self):
-        play = self._enter_play_mode()
-        key = lambda code: self.app.handle(pygame.event.Event(pygame.KEYDOWN, key=code))
-        key(pygame.K_RIGHT)
-        self.assertEqual(play.selected, 0)
-        key(pygame.K_5)
-        self.assertEqual(play.board.values[0], 5)
-        key(pygame.K_BACKSPACE)
-        self.assertEqual(play.board.values[0], 0)
-        key(pygame.K_RIGHT)
-        self.assertEqual(play.selected, 1)
-        play.toggle_candidates()
-        self.app.draw()
-        play.hint()
-        self.assertEqual(play.board.values[1], play.board.solution()[1])
-        self.app.draw()
-        play.reset()
-        self.assertEqual(play.board.filled, 0)
-
-    def test_digits_that_arrive_as_text_are_entered_too(self):
-        # With an input method active (Telex, for example) a digit can arrive as text only.
-        play = self._enter_play_mode()
-        self.app.handle(pygame.event.Event(pygame.TEXTINPUT, text="5"))
-        self.assertEqual(play.board.filled, 0)  # no cell selected yet
-        self.app.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT))
-        self.app.handle(pygame.event.Event(pygame.TEXTINPUT, text="7"))
-        self.app.handle(pygame.event.Event(pygame.TEXTINPUT, text="x"))
-        self.assertEqual(play.board.values[play.selected], 7)
-
-    def test_digit_pad_opens_beside_a_clicked_cell_and_enters_the_chosen_digit(self):
-        play = self._enter_play_mode()
-        r, c = play.puzzle.cells[3]
-        self.app.handle(click(play.view.cell_rect(r, c).center))
-        self.assertTrue(play.picker_open)
-        pad = play._picker_cells()
-        self.assertEqual([digit for _, digit in pad], list(range(1, 10)) + [0])
-        box = play._picker_box()
-        self.assertTrue(play.area.contains(box), "the pad must stay inside the board area")
-        self.assertFalse(box.colliderect(play.view.cell_rect(r, c)), "the pad must not hide the cell it edits")
-        self.app.draw()
-        self.app.handle(click(pad[6][0].center))  # the 7
-        self.assertEqual(play.board.values[3], 7)
-        self.assertFalse(play.picker_open)
-        self.app.handle(click(play.view.cell_rect(r, c).center))
-        self.app.handle(click(pad[9][0].center))  # the X
-        self.assertEqual(play.board.values[3], 0)
-
-    def test_clicking_the_same_cell_twice_closes_the_pad(self):
-        play = self._enter_play_mode()
-        r, c = play.puzzle.cells[0]
-        for expected in (True, False):
-            self.app.handle(click(play.view.cell_rect(r, c).center))
-            self.assertEqual(play.picker_open, expected)
-
-    def test_clue_under_the_mouse_lists_every_digit_set_for_its_sum(self):
-        play = self._enter_play_mode(EXAMPLE)
-        view = play.view
-        clue_cell = next(cell for cell, clue in play.puzzle.clues.items() if clue.down == 14)
-        rect = view.cell_rect(*clue_cell)
-        lower_left = (rect.x + rect.width // 4, rect.y + rect.height * 3 // 4)
-        self.assertEqual(view.clue_at(lower_left), (*clue_cell, "down"))
-        title, lines = play._tip_lines(view.clue_at(lower_left))
-        self.assertIn("14", title)
-        run = next(r for r in play.csp.runs if r.start == clue_cell and r.direction == "down")
-        self.assertEqual(sorted(lines), sorted(" + ".join(map(str, combo))
-                                               for combo in digit_combinations(14, len(run.cells))))
-        self.assertIn(f"{len(run.cells)} cells", title)
-        self.assertEqual(view.clue_at((rect.right - 3, rect.y + 3)), None if play.puzzle.clues[clue_cell].across is None
-                         else (*clue_cell, "across"))
-
-    def test_digit_combinations(self):
-        self.assertEqual(digit_combinations(3, 2), [(1, 2)])
-        self.assertEqual(digit_combinations(45, 9), [tuple(range(1, 10))])
-        self.assertEqual(digit_combinations(17, 2), [(8, 9)])
-        self.assertEqual(digit_combinations(2, 2), [])
-
-    def test_new_puzzle_gives_a_solvable_random_board_of_the_chosen_size(self):
-        play = self._enter_play_mode()
-        for index, label in enumerate(("4x4", "5x5", "7x7", "9x9", "10x10", "13x13")):
-            play.sizes.selected = -1
-            self.app.handle(click(play.sizes._cell(index).center))
-            self.assertEqual(play.sizes.selected, index)
-            self.assertEqual(play.boards.selected, -1)
-            self.assertEqual((play.puzzle.height, play.puzzle.width), (int(label.split("x")[0]),) * 2)
-            self.assertIsNotNone(play.board.solution(), label)
-            self.app.draw()
-        before = play.puzzle
-        play.new_puzzle()
-        self.assertIsNot(play.puzzle, before)
-        self.assertEqual(play.board.filled, 0)
-
-    def test_show_solution_marks_the_board_solved_and_new_puzzle_clears_it(self):
-        play = self._enter_play_mode(EXAMPLE)
-        play.show_solution()
-        self.assertTrue(play.solved)
-        self.app.draw()
-        play.finish_button.rect.topleft = (300, 650)
-        self.app.handle(click(play.finish_button.rect.center))
-        self.assertFalse(play.solved)
-        self.assertEqual(play.board.filled, 0)
-
-    def test_undo_takes_back_digits_hints_and_clearing(self):
-        play = self._enter_play_mode(EXAMPLE)
-        key = lambda code, mod=0: self.app.handle(pygame.event.Event(pygame.KEYDOWN, key=code, mod=mod))
-        key(pygame.K_RIGHT)
-        key(pygame.K_5)
-        key(pygame.K_6)
-        self.assertEqual(play.board.values[0], 6)
-        play.undo()
-        self.assertEqual(play.board.values[0], 5)
-        play.hint()
-        self.assertEqual(play.hints_used, 1)
-        filled = play.board.filled
-        play.reset()
-        self.assertEqual(play.board.filled, 0)
-        play.undo()  # clearing the board can be taken back too
-        self.assertEqual(play.board.filled, filled)
-        while play.history:
-            play.undo()
-        self.assertEqual(play.board.filled, 0)
-        play.undo()  # nothing left: no error
-        self.app.handle(click(play.undo_button.rect.center))
-        self.app.draw()
-
-    def test_the_clock_runs_until_the_puzzle_is_solved(self):
-        play = self._enter_play_mode(EXAMPLE)
-        now = [10_000]
-        play.clock = lambda: now[0]
-        play._restart_clock()
-        now[0] += 75_000
-        self.assertEqual(play.elapsed_seconds(), 75)
-        for cell, digit in enumerate(play.board.solution()):
-            play._enter(cell, digit)
-        self.assertTrue(play.solved)
-        now[0] += 60_000
-        self.assertEqual(play.elapsed_seconds(), 75)  # stopped at the solution
-        self.app.draw()
-        play.show_solution()
-        self.assertTrue(play.revealed)
-        play.undo()  # the shown solution is not taken back piece by piece
-        self.assertTrue(play.solved)
-        play.reset()
-        self.assertFalse(play.revealed)
-        self.assertEqual(play.elapsed_seconds(), 0)
-
-    def test_wrong_digits_show_in_red_and_correct_ones_in_green(self):
-        play = self._enter_play_mode(EXAMPLE)
-        play.board.set_value(0, 9)
-        play.board.set_value(1, 9)  # the same digit twice in a run
-        self.assertTrue(play.board.conflicts())
-        self.app.draw()
-
-    def test_both_themes_draw_every_screen(self):
-        from kakuro.gui.theme import Theme
-        try:
-            for name in ("dark", "classic"):
-                Theme.use(name)
-                self.app.mode_choice.selected = 0
-                self.app.draw()
-                self.app.mode_choice.selected = 1
-                self.app.draw()
-        finally:
-            Theme.use("classic")
-
-    def test_theme_button_and_key_switch_themes(self):
-        from kakuro.gui.theme import Theme
-        try:
-            Theme.use("classic")
-            self.app.handle(click(self.app.theme_button.rect.center))
-            self.assertEqual(Theme.name, "dark")
-            self.app.handle(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_t))
-            self.assertEqual(Theme.name, "classic")
-        finally:
-            Theme.use("classic")
-
-    def test_board_keeps_its_place_when_returning_to_the_solver_view(self):
-        app = self.app
         app.go_end()
-        position = app.replay.position
-        app.mode_choice.handle(click(app.mode_choice._cell(1).center))
-        app.draw()
-        app.mode_choice.handle(click(app.mode_choice._cell(0).center))
-        self.assertEqual(app.replay.position, position)
         app.draw()
 
     def test_real_main_loop_stops_when_the_window_closes(self):

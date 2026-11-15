@@ -4,11 +4,10 @@ One Boolean variable per square: Q(r, c) is True iff the square holds a queen.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import combinations
 from math import comb
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Tuple
 
 Square = Tuple[int, int]
 Clause = List[int]
@@ -54,17 +53,16 @@ class ConstraintDiscovery:
     def __init__(self, n: int) -> None:
         self.n = n
 
+    @classmethod
+    def line_keys(cls, r: int, c: int) -> Tuple[Tuple[str, int], ...]:
+        """The four lines through (r, c). Two squares attack each other iff they share a key."""
+        return (cls.ROW, r), (cls.COLUMN, c), (cls.DIAGONAL, r - c), (cls.ANTI_DIAGONAL, r + c)
+
     def attack_lines(self) -> List[AttackLine]:
         groups: Dict[Tuple[str, int], List[Square]] = {}
         for r in range(self.n):
             for c in range(self.n):
-                keys = (
-                    (self.ROW, r),
-                    (self.COLUMN, c),
-                    (self.DIAGONAL, r - c),
-                    (self.ANTI_DIAGONAL, r + c),
-                )
-                for group in keys:
+                for group in self.line_keys(r, c):
                     groups.setdefault(group, []).append((r, c))
         return [AttackLine(kind, key, tuple(squares)) for (kind, key), squares in groups.items()]
 
@@ -81,66 +79,10 @@ class CnfFormula:
         return len(self.clauses)
 
 
-class AuxiliaryVariables:
-    """Hands out fresh variables numbered after the N^2 square variables."""
-
-    def __init__(self, first: int) -> None:
-        self.next = first
-
-    def new(self) -> int:
-        variable = self.next
-        self.next += 1
-        return variable
-
-
-class AtMostOneEncoding(ABC):
-    """A way of writing AtMostOne(x1..xk) as clauses."""
-
-    name = "abstract"
-
-    @abstractmethod
-    def encode(self, literals: List[int], auxiliary: AuxiliaryVariables) -> List[Clause]:
-        """Clauses that hold exactly when at most one of the literals is true."""
-
-
-class PairwiseEncoding(AtMostOneEncoding):
-    """For each pair i < j, NOT(xi AND xj), which De Morgan rewrites as (-xi v -xj).
-
-    No extra variables, but C(k,2) clauses per line, hence Theta(N^3) on the whole board.
-    """
-
-    name = "pairwise"
-
-    def encode(self, literals: List[int], auxiliary: AuxiliaryVariables) -> List[Clause]:
-        return [[-a, -b] for a, b in combinations(literals, 2)]
-
-
-class SequentialCounterEncoding(AtMostOneEncoding):
-    """Sinz's sequential counter: 3k - 4 clauses and k - 1 extra variables per line.
-
-    Each extra variable s_i means "some queen among x1..xi". The clauses say that a queen
-    sets the counter, that a set counter stays set, and that no queen may follow a set
-    counter. This gives Theta(N^2) clauses on the whole board. Below SHORT_LINE cells
-    the pairwise form is the smaller of the two, so it is used there.
-    """
-
-    name = "sequential"
-    SHORT_LINE = 5
-
-    def encode(self, literals: List[int], auxiliary: AuxiliaryVariables) -> List[Clause]:
-        if len(literals) <= self.SHORT_LINE:
-            return [[-a, -b] for a, b in combinations(literals, 2)]
-        counters = [auxiliary.new() for _ in literals[:-1]]
-        clauses: List[Clause] = [[-literals[0], counters[0]]]
-        for i in range(1, len(literals) - 1):
-            clauses.append([-literals[i], counters[i]])
-            clauses.append([-counters[i - 1], counters[i]])
-            clauses.append([-literals[i], -counters[i - 1]])
-        clauses.append([-literals[-1], -counters[-1]])
-        return clauses
-
-
-AT_MOST_ONE_ENCODINGS = {encoding.name: encoding for encoding in (PairwiseEncoding, SequentialCounterEncoding)}
+def at_most_one(literals: List[int]) -> List[Clause]:
+    """AtMostOne(x1..xk) in pairwise form: for each pair i < j, NOT(xi AND xj),
+    which De Morgan rewrites as (-xi v -xj). C(k,2) clauses, hence Theta(N^3) on the board."""
+    return [[-a, -b] for a, b in combinations(literals, 2)]
 
 
 class CnfEncoder:
@@ -150,35 +92,56 @@ class CnfEncoder:
     Diagonals:          AtMostOne(line)
 
     AtLeastOne(x1..xk)  is already one clause: (x1 v ... v xk).
-    AtMostOne(x1..xk)   is delegated to an AtMostOneEncoding.
-
-    The variables 1..N^2 are always the squares, so that decoding a model never depends
-    on the encoding: only extra variables come after them.
+    AtMostOne(x1..xk)   is the pairwise form, see at_most_one().
     """
 
-    def __init__(self, n: int, at_most_one: Optional[AtMostOneEncoding] = None) -> None:
+    def __init__(self, n: int) -> None:
         if n < 1:
             raise ValueError("N must be positive")
         self.n = n
         self.variables = SquareVariables(n)
         self.discovery = ConstraintDiscovery(n)
-        self.at_most_one = at_most_one or PairwiseEncoding()
 
     def _literals(self, line: AttackLine) -> List[int]:
         return [self.variables.variable(r, c) for r, c in line.squares]
 
     def encode(self) -> CnfFormula:
         clauses: List[Clause] = []
-        auxiliary = AuxiliaryVariables(self.variables.count + 1)
         for line in self.discovery.attack_lines():
             literals = self._literals(line)
             if line.kind in (ConstraintDiscovery.ROW, ConstraintDiscovery.COLUMN):
                 clauses.append(literals)
-            clauses.extend(self.at_most_one.encode(literals, auxiliary))
-        return CnfFormula(auxiliary.next - 1, clauses)
+            clauses.extend(at_most_one(literals))
+        return CnfFormula(self.variables.count, clauses)
+
+    def clause_breakdown(self) -> Dict[str, int]:
+        """Clauses of each kind, counted from the attack lines without building them."""
+        counts = {"at_least_one": 0, "at_most_one_lines": 0, "at_most_one_diagonals": 0}
+        for line in self.discovery.attack_lines():
+            pairs = comb(len(line.squares), 2)
+            if line.kind in (ConstraintDiscovery.ROW, ConstraintDiscovery.COLUMN):
+                counts["at_least_one"] += 1
+                counts["at_most_one_lines"] += pairs
+            else:
+                counts["at_most_one_diagonals"] += pairs
+        return counts
+
+    @staticmethod
+    def attacked_squares(n: int, row: int, col: int) -> int:
+        """Squares sharing a row, column or diagonal with (row, col)."""
+        diagonal = n - abs(row - col)
+        anti_diagonal = n - abs(row + col - (n - 1))
+        return 2 * (n - 1) + (diagonal - 1) + (anti_diagonal - 1)
+
+    @classmethod
+    def clauses_with_square(cls, n: int, row: int, col: int) -> int:
+        """Clauses that mention Q(row, col): its row's and column's at-least-one clause,
+        and one at-most-one clause for each square it attacks. N = 1 has a single line
+        that is both the row and the column, still two clauses."""
+        return 2 + cls.attacked_squares(n, row, col)
 
     def queens_in_model(self, model: Iterable[int]) -> Tuple[Square, ...]:
-        """The queens of a model, ignoring the encoding's extra variables."""
+        """The squares whose variable is true in the model."""
         return tuple(self.variables.square(lit) for lit in model if 0 < lit <= self.variables.count)
 
     @staticmethod
