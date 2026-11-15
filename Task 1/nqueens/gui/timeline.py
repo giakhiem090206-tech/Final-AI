@@ -10,6 +10,7 @@ import pygame
 import pygame.gfxdraw
 
 from .replay import MinConflictsPlayer
+from .service import plural
 from .theme import Palette, dashed_line, draw_text
 
 LINE = Palette.SERIES[0]
@@ -101,5 +102,5 @@ class Timeline:
             return None
         frame = self.frame_at(mouse[0], player)
         attempt, step = player.locate(frame)
-        label = f"bước {step:,}: {player.pairs[frame]} cặp tấn công"
-        return f"lần {attempt + 1} · {label}" if len(player.attempts) > 1 else label
+        label = f"step {step:,}: {plural(player.pairs[frame], 'attacking pair')}"
+        return f"run {attempt + 1}, {label}" if len(player.attempts) > 1 else label

@@ -48,12 +48,12 @@ python main.py ui
 
 Trong cửa sổ giao diện:
 
-- Chọn thuật toán ở khung **THUẬT TOÁN**: **Glucose3 (SAT)**, **Min-Conflicts chuẩn** (chọn ngẫu nhiên biến đang xung đột) hoặc **Min-Conflicts + heuristic** (biến xung đột nhiều nhất, kèm tabu).
-- Đổi **N** (1–32) và, với Min-Conflicts, **seed** của phép gán ban đầu bằng các nút **− / +**; nhấn **GIẢI** để chạy.
-- **Nhấn vào ô để tự đặt/bỏ hậu** (phím **C** hoặc nút **Xóa bàn cờ** để xóa). Với Glucose3 (mỗi ô một biến), các hậu đã đặt được đưa vào solver dưới dạng *giả định* (assumptions): solver đặt nốt các hậu còn lại hoặc trả về UNSAT nếu không lời giải nào chứa chúng. Với Min-Conflicts (mỗi hàng một biến), nhấn vào ô sẽ dời hậu của hàng đó, và tìm kiếm bắt đầu từ thế cờ bạn đặt.
-- Rê chuột lên một ô để xem biến logic `x = rN + c + 1` của ô, các ô nó tấn công và số mệnh đề CNF chứa nó. Với Glucose3, khung **CẤU TRÚC CNF** cho biết số mệnh đề của từng loại ràng buộc.
-- Với Min-Conflicts, quá trình tìm kiếm được phát lại từng bước: hậu bị tấn công tô đỏ, đường đỏ nối các hậu tấn công nhau, hàng sắp sửa tô vàng kèm số xung đột của từng cột, ô xanh là các cột ít xung đột nhất. Biểu đồ phía dưới cho thấy số cặp tấn công sau mỗi bước; nhấn hoặc kéo trên biểu đồ để tua. Bảng kết quả so sánh số bước với cách chọn biến còn lại trên **cùng seed**.
-- Phím tắt: **Enter** giải, **Space** phát/dừng, **← / →** từng bước, **Home / End** về đầu/cuối, **↑ / ↓** đổi N, **1 / 2 / 3** hoặc **Tab** chọn thuật toán, **R** đổi seed, **Esc** đóng cửa sổ.
+- Chọn thuật toán ở mục **Algorithm**: **Glucose3 (SAT)**, **Min-Conflicts: random variable** (cách chuẩn, chọn ngẫu nhiên biến đang xung đột) hoặc **Min-Conflicts: most conflicted + tabu** (heuristic đề xuất).
+- Đổi **Board size N** (1–32) và, với Min-Conflicts, **Random seed** của phép gán ban đầu bằng các nút **− / +**; nhấn **Solve** để chạy.
+- **Nhấn vào ô để tự đặt/bỏ hậu** (phím **C** hoặc nút **Clear board** để xóa). Với Glucose3 (mỗi ô một biến), các hậu đã đặt được đưa vào solver dưới dạng *giả định* (assumptions): solver đặt nốt các hậu còn lại hoặc trả về UNSAT nếu không lời giải nào chứa chúng. Với Min-Conflicts (mỗi hàng một biến), nhấn vào ô sẽ dời hậu của hàng đó, và tìm kiếm bắt đầu từ thế cờ bạn đặt.
+- Rê chuột lên một ô để xem biến logic `x = rN + c + 1` của ô, các ô nó tấn công và số mệnh đề CNF chứa nó. Với Glucose3, mục **CNF clauses** cho biết số mệnh đề của từng loại ràng buộc.
+- Với Min-Conflicts, quá trình tìm kiếm được phát lại từng bước: hậu bị tấn công tô đỏ, đường đỏ nối các hậu tấn công nhau, hàng sắp sửa tô vàng kèm số xung đột của từng cột, ô xanh là các cột ít xung đột nhất. Biểu đồ **Attacking pairs per step** cho thấy số cặp tấn công sau mỗi bước; nhấn hoặc kéo trên biểu đồ để tua. Bảng kết quả so sánh số bước với cách chọn biến còn lại trên **cùng seed**.
+- Phím tắt (ghi ở thanh dưới cùng cửa sổ): **Enter** giải, **Space** phát/dừng, **← / →** từng bước, **Home / End** về đầu/cuối, **↑ / ↓** đổi N, **1 / 2 / 3** hoặc **Tab** chọn thuật toán, **R** đổi seed, **Esc** đóng cửa sổ.
 - N=2 và N=3 không có lời giải: Glucose3 trả về UNSAT, còn Min-Conflicts dừng sau 50 lần khởi động lại.
 
 ### Chạy bằng dòng lệnh

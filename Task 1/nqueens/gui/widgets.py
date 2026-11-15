@@ -1,11 +1,11 @@
-"""Buttons, steppers, an option list and a segmented control.
+"""Buttons, steppers, radio buttons and a segmented control.
 
 Icons are drawn from shapes instead of symbol characters, so they look the same on
 every platform, whatever fonts are installed.
 """
 from __future__ import annotations
 
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, Sequence, Tuple
 
 import pygame
 import pygame.gfxdraw
@@ -26,8 +26,8 @@ def draw_icon(surface: pygame.Surface, name: str, rect: pygame.Rect, color) -> N
         _triangle(surface, color, [(cx - s * 0.7, cy - s), (cx - s * 0.7, cy + s), (cx + s, cy)])
     elif name == "pause":
         bar = max(2, round(s * 0.55))
-        pygame.draw.rect(surface, color, (cx - bar - 2, cy - s, bar, 2 * s + 1), border_radius=1)
-        pygame.draw.rect(surface, color, (cx + 2, cy - s, bar, 2 * s + 1), border_radius=1)
+        pygame.draw.rect(surface, color, (cx - bar - 2, cy - s, bar, 2 * s + 1))
+        pygame.draw.rect(surface, color, (cx + 2, cy - s, bar, 2 * s + 1))
     elif name in ("prev", "next"):
         d = 1 if name == "next" else -1
         _triangle(surface, color, [(cx - d * s * 0.6, cy - s), (cx - d * s * 0.6, cy + s), (cx + d * s * 0.8, cy)])
@@ -45,7 +45,7 @@ def draw_icon(surface: pygame.Surface, name: str, rect: pygame.Rect, color) -> N
 class Button:
     """A clickable rectangle with a label or an icon. `primary` buttons are filled."""
 
-    def __init__(self, on_click: Callable[[], None], label: str = "", icon: Optional[str] = None,
+    def __init__(self, on_click: Callable[[], None], label: str = "", icon: str = "",
                  primary: bool = False) -> None:
         self.on_click = on_click
         self.label = label
@@ -70,19 +70,17 @@ class Button:
         hovered = self.enabled and self.rect.collidepoint(mouse)
         if self.primary:
             fill = Palette.DISABLED if not self.enabled else (Palette.ACCENT_HOVER if hovered else Palette.ACCENT)
-            ink = Palette.ON_ACCENT
+            ink, edge = Palette.ON_ACCENT, fill
         else:
             fill = Palette.CONTROL_HOVER if hovered else Palette.CONTROL
-            ink = Palette.TEXT if self.enabled else Palette.FAINT
-        pygame.draw.rect(surface, fill, self.rect, border_radius=8)
-        if not self.primary:
-            pygame.draw.rect(surface, Palette.BORDER, self.rect, 1, border_radius=8)
+            ink, edge = (Palette.TEXT if self.enabled else Palette.FAINT), Palette.BORDER
+        pygame.draw.rect(surface, fill, self.rect, border_radius=3)
+        pygame.draw.rect(surface, edge, self.rect, 1, border_radius=3)
         if self.icon:
             draw_icon(surface, self.icon, self.rect, ink)
         else:
-            size = 16 if self.primary else 14
-            label = fit_text(self.label, self.rect.w - 12, size, bold=True)
-            draw_text(surface, label, self.rect.center, size, ink, bold=True, anchor="center")
+            label = fit_text(self.label, self.rect.w - 10, 14, bold=self.primary)
+            draw_text(surface, label, self.rect.center, 14, ink, bold=self.primary, anchor="center")
 
 
 class Stepper:
@@ -110,69 +108,55 @@ class Stepper:
     def draw(self, surface: pygame.Surface, mouse: Tuple[int, int]) -> None:
         if not self.visible:
             return
+        middle = pygame.Rect(self.minus.rect.right - 1, self.rect.y, self.plus.rect.x - self.minus.rect.right + 2,
+                             self.rect.h)
+        pygame.draw.rect(surface, Palette.CARD, middle)
+        pygame.draw.rect(surface, Palette.BORDER, middle, 1)
         self.minus.draw(surface, mouse)
         self.plus.draw(surface, mouse)
-        middle = pygame.Rect(self.minus.rect.right, self.rect.y, self.plus.rect.x - self.minus.rect.right, self.rect.h)
-        draw_text(surface, fit_text(self.text, middle.w - 4, 16, True), middle.center, 16, Palette.TEXT,
-                  bold=True, anchor="center")
+        draw_text(surface, fit_text(self.text, middle.w - 4, 14), middle.center, 14, Palette.TEXT, anchor="center")
 
 
-class OptionList:
-    """Mutually exclusive choices stacked vertically, each with a title and a subtitle."""
+class RadioGroup:
+    """Mutually exclusive choices, one plain radio button per line."""
 
-    def __init__(self, options: Sequence[Tuple[str, str]], on_select: Callable[[int], None]) -> None:
-        self.options = list(options)
+    def __init__(self, labels: Sequence[str], on_select: Callable[[int], None]) -> None:
+        self.labels = list(labels)
         self.on_select = on_select
         self.selected = 0
         self.rect = pygame.Rect(0, 0, 0, 0)
-        self.item_height = 46
-        self.gap = 6
-        self.show_subtitles = True
+        self.item_height = 26
 
     @property
     def height(self) -> int:
-        count = len(self.options)
-        return count * self.item_height + (count - 1) * self.gap
+        return len(self.labels) * self.item_height
 
     def item_rect(self, index: int) -> pygame.Rect:
-        y = self.rect.y + index * (self.item_height + self.gap)
-        return pygame.Rect(self.rect.x, y, self.rect.w, self.item_height)
+        return pygame.Rect(self.rect.x, self.rect.y + index * self.item_height, self.rect.w, self.item_height)
 
     def hit(self, position: Tuple[int, int]) -> bool:
         return self.rect.collidepoint(position)
 
     def handle(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            for index in range(len(self.options)):
+            for index in range(len(self.labels)):
                 if self.item_rect(index).collidepoint(event.pos):
                     self.on_select(index)
                     return True
         return False
 
     def draw(self, surface: pygame.Surface, mouse: Tuple[int, int]) -> None:
-        for index, (title, subtitle) in enumerate(self.options):
+        for index, label in enumerate(self.labels):
             rect = self.item_rect(index)
-            chosen = index == self.selected
-            hovered = rect.collidepoint(mouse)
-            fill = Palette.SELECTED if chosen else (Palette.CONTROL_HOVER if hovered else Palette.CONTROL)
-            pygame.draw.rect(surface, fill, rect, border_radius=9)
-            pygame.draw.rect(surface, Palette.ACCENT if chosen else Palette.BORDER, rect, 2 if chosen else 1,
-                             border_radius=9)
-            cx, cy = rect.x + 20, rect.centery
-            ring = Palette.ACCENT if chosen else Palette.FAINT
-            pygame.gfxdraw.aacircle(surface, cx, cy, 8, ring)
+            cx, cy = rect.x + 8, rect.centery
+            ring = Palette.ACCENT if rect.collidepoint(mouse) else Palette.MUTED
             pygame.gfxdraw.aacircle(surface, cx, cy, 7, ring)
-            if chosen:
+            pygame.gfxdraw.filled_circle(surface, cx, cy, 6, Palette.CARD)
+            pygame.gfxdraw.aacircle(surface, cx, cy, 7, ring)
+            if index == self.selected:
                 pygame.gfxdraw.aacircle(surface, cx, cy, 4, Palette.ACCENT)
                 pygame.gfxdraw.filled_circle(surface, cx, cy, 4, Palette.ACCENT)
-            key = draw_text(surface, str(index + 1), (rect.right - 12, cy), 12, Palette.FAINT, anchor="midright")
-            text_x, text_w = rect.x + 38, key.x - rect.x - 46
-            if self.show_subtitles:
-                draw_text(surface, fit_text(title, text_w, 15, True), (text_x, rect.y + 5), 15, Palette.TEXT, True)
-                draw_text(surface, fit_text(subtitle, text_w, 12), (text_x, rect.y + 26), 12, Palette.MUTED)
-            else:
-                draw_text(surface, fit_text(title, text_w, 15, True), (text_x, cy), 15, Palette.TEXT, True,
-                          anchor="midleft")
+            draw_text(surface, fit_text(label, rect.w - 24, 14), (rect.x + 22, cy), 14, Palette.TEXT, anchor="midleft")
 
 
 class Segmented:
@@ -203,14 +187,10 @@ class Segmented:
     def draw(self, surface: pygame.Surface, mouse: Tuple[int, int]) -> None:
         if not self.visible:
             return
-        pygame.draw.rect(surface, Palette.CONTROL, self.rect, border_radius=8)
-        pygame.draw.rect(surface, Palette.BORDER, self.rect, 1, border_radius=8)
         for index, label in enumerate(self.labels):
-            cell = self.cell(index).inflate(-4, -4)
+            cell = self.cell(index)
             chosen = index == self.selected
-            if chosen:
-                pygame.draw.rect(surface, Palette.ACCENT, cell, border_radius=6)
-            elif cell.collidepoint(mouse):
-                pygame.draw.rect(surface, Palette.CONTROL_HOVER, cell, border_radius=6)
-            draw_text(surface, label, cell.center, 13, Palette.ON_ACCENT if chosen else Palette.TEXT,
-                      bold=chosen, anchor="center")
+            fill = Palette.ACCENT if chosen else (Palette.CONTROL_HOVER if cell.collidepoint(mouse) else Palette.CONTROL)
+            pygame.draw.rect(surface, fill, cell)
+            pygame.draw.rect(surface, Palette.ACCENT if chosen else Palette.BORDER, cell, 1)
+            draw_text(surface, label, cell.center, 13, Palette.ON_ACCENT if chosen else Palette.TEXT, anchor="center")

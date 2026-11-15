@@ -11,47 +11,40 @@ Color = Tuple[int, ...]
 class Palette:
     """Every colour of the interface, named by the role it plays."""
 
-    BACKGROUND = (237, 241, 239)
+    BACKGROUND = (232, 232, 232)
     CARD = (255, 255, 255)
-    SHADOW = (219, 226, 222)
-    BORDER = (214, 223, 218)
-    CONTROL = (243, 246, 244)
-    CONTROL_HOVER = (229, 238, 233)
-    SELECTED = (232, 243, 237)
-    DISABLED = (150, 178, 166)
-    TEXT = (27, 39, 47)
-    MUTED = (92, 107, 116)
-    FAINT = (156, 167, 172)
-    ACCENT = (30, 105, 82)
-    ACCENT_HOVER = (22, 86, 66)
+    BORDER = (196, 196, 196)
+    STATUS_BAR = (222, 222, 222)
+    CONTROL = (246, 246, 246)
+    CONTROL_HOVER = (229, 234, 242)
+    DISABLED = (150, 170, 200)
+    TEXT = (30, 30, 30)
+    MUTED = (96, 96, 96)
+    FAINT = (160, 160, 160)
+    ACCENT = (42, 92, 160)
+    ACCENT_HOVER = (32, 74, 132)
     ON_ACCENT = (255, 255, 255)
 
-    LIGHT_SQUARE = (241, 233, 213)
-    DARK_SQUARE = (104, 143, 117)
-    BOARD_EDGE = (52, 74, 63)
-    QUEEN = (30, 33, 31)
-    QUEEN_EDGE = (255, 250, 236)
+    LIGHT_SQUARE = (240, 217, 181)
+    DARK_SQUARE = (181, 136, 99)
+    BOARD_EDGE = (96, 66, 44)
+    QUEEN = (30, 30, 30)
+    QUEEN_EDGE = (255, 250, 240)
 
-    # Status colours: only ever used for a state, always beside an icon or a label.
-    GOOD = (28, 128, 84)
-    WARNING = (196, 120, 0)
-    CRITICAL = (205, 50, 44)
+    GOOD = (30, 125, 60)
+    WARNING = (190, 110, 0)
+    CRITICAL = (200, 40, 40)
 
-    HOVER_LINE = (236, 150, 12)
+    HOVER_LINE = (42, 92, 160)
     MOVE_ROW = (255, 214, 102)
-    BEST_VALUE = (60, 175, 110)
+    BEST_VALUE = (70, 160, 90)
 
-    # Categorical series, in their fixed order (validated colour-blind-safe for three series).
+    # Categorical series, in a fixed colour-blind-safe order.
     SERIES = ((42, 120, 214), (235, 104, 52), (27, 175, 122))
 
 
-def blend(color: Color, background: Color, amount: float) -> Color:
-    """`amount` of `color` over `background` (0 gives the background, 1 the colour)."""
-    return tuple(round(c * amount + b * (1 - amount)) for c, b in zip(color[:3], background[:3]))
-
-
 class Fonts:
-    """System fonts that cover Vietnamese on Windows (Segoe UI) and macOS (Arial)."""
+    """System fonts that cover every character used, on Windows (Segoe UI) and macOS (Arial)."""
 
     FAMILIES = "segoeui,arial,helvetica,dejavusans,liberationsans"
     _cache: Dict[Tuple[int, bool], pygame.font.Font] = {}
@@ -92,9 +85,9 @@ def fit_text(text: str, width: int, size: int = 14, bold: bool = False) -> str:
     """The text, cut with an ellipsis if it is wider than `width`."""
     if text_width(text, size, bold) <= width:
         return text
-    while text and text_width(text + "…", size, bold) > width:
+    while text and text_width(text + "...", size, bold) > width:
         text = text[:-1]
-    return text.rstrip() + "…"
+    return text.rstrip() + "..."
 
 
 def wrap_text(text: str, width: int, size: int = 14, bold: bool = False) -> List[str]:
@@ -111,19 +104,6 @@ def wrap_text(text: str, width: int, size: int = 14, bold: bool = False) -> List
     if current:
         lines.append(current)
     return lines
-
-
-def draw_paragraph(surface: pygame.Surface, text: str, x: int, y: int, width: int, size: int = 14,
-                   color: Color = Palette.MUTED, max_lines: int = 99, line_height: int = 0) -> int:
-    """Draw wrapped text and return the y below it."""
-    line_height = line_height or Fonts.get(size).get_linesize() + 1
-    lines = wrap_text(text, width, size)
-    if len(lines) > max_lines:
-        lines = lines[:max_lines]
-        lines[-1] = fit_text(lines[-1] + " …", width, size)
-    for index, line in enumerate(lines):
-        draw_text(surface, line, (x, y + index * line_height), size, color)
-    return y + len(lines) * line_height
 
 
 def dashed_line(surface: pygame.Surface, color: Color, start: Tuple[int, int], end: Tuple[int, int],

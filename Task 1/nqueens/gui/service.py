@@ -19,7 +19,6 @@ Square = Tuple[int, int]
 class Algorithm:
     key: str
     title: str
-    subtitle: str
 
     @property
     def is_local_search(self) -> bool:
@@ -27,9 +26,9 @@ class Algorithm:
 
 
 ALGORITHMS = (
-    Algorithm("sat", "Glucose3 (SAT)", "Mã hóa CNF rồi giải bằng PySAT"),
-    Algorithm("standard", "Min-Conflicts chuẩn", "Chọn ngẫu nhiên một biến đang xung đột"),
-    Algorithm("tabu", "Min-Conflicts + heuristic", "Biến xung đột nhiều nhất, kèm danh sách tabu"),
+    Algorithm("sat", "Glucose3 (SAT)"),
+    Algorithm("standard", "Min-Conflicts: random variable"),
+    Algorithm("tabu", "Min-Conflicts: most conflicted + tabu"),
 )
 
 
@@ -52,8 +51,13 @@ def _checked(outcome: Outcome) -> Outcome:
     """Check a returned placement against the chess rules (once) and report it."""
     if outcome.placement is not None:
         outcome.valid = outcome.placement.is_solution()
-        outcome.stats.append(("Kiểm tra lại bằng luật cờ", "hợp lệ" if outcome.valid else "SAI"))
+        outcome.stats.append(("Rule check", "valid" if outcome.valid else "INVALID"))
     return outcome
+
+
+def plural(count: int, word: str) -> str:
+    """"1 step", "2 steps"."""
+    return f"{count:,} {word}" if count == 1 else f"{count:,} {word}s"
 
 
 def _ms(seconds: float) -> str:
@@ -62,9 +66,9 @@ def _ms(seconds: float) -> str:
 
 class SolverService:
     BREAKDOWN_LABELS = (
-        ("at_least_one", "Ít nhất một hậu trên mỗi hàng, cột"),
-        ("at_most_one_lines", "Nhiều nhất một hậu trên mỗi hàng, cột"),
-        ("at_most_one_diagonals", "Nhiều nhất một hậu trên mỗi đường chéo"),
+        ("at_least_one", "At least one queen per row/column"),
+        ("at_most_one_lines", "At most one queen per row/column"),
+        ("at_most_one_diagonals", "At most one queen per diagonal"),
     )
 
     def __init__(self) -> None:
@@ -94,15 +98,15 @@ class SolverService:
 
         result = Glucose3QueensSolver().solve(n, fixed)
         stats = [
-            ("Kết quả", "SAT" if result.satisfiable else "UNSAT"),
-            ("Biến · mệnh đề CNF", f"{result.num_variables:,} · {result.num_clauses:,}"),
-            ("Mã hóa · nạp · giải", f"{_ms(result.encode_seconds)} · {_ms(result.load_seconds)} · "
-                                    f"{_ms(result.solve_seconds)} ms"),
-            ("Tổng thời gian", f"{_ms(result.total_seconds)} ms"),
-            ("Xung đột · quyết định", f"{result.conflicts:,} · {result.decisions:,}"),
+            ("Result", "SAT" if result.satisfiable else "UNSAT"),
+            ("Variables / clauses", f"{result.num_variables:,} / {result.num_clauses:,}"),
+            ("Encode / load / solve", f"{_ms(result.encode_seconds)} / {_ms(result.load_seconds)} / "
+                                      f"{_ms(result.solve_seconds)} ms"),
+            ("Total time", f"{_ms(result.total_seconds)} ms"),
+            ("Conflicts / decisions", f"{result.conflicts:,} / {result.decisions:,}"),
         ]
         if fixed:
-            stats.insert(1, ("Hậu đặt sẵn (giả định)", str(len(fixed))))
+            stats.insert(1, ("Fixed queens (assumptions)", str(len(fixed))))
         status = "solved" if result.satisfiable else "unsat"
         return _checked(Outcome(algorithm, n, status, result.placement, stats, fixed=fixed))
 
@@ -120,16 +124,16 @@ class SolverService:
         other = MinConflictsSolver(SELECTORS[other_key]()).solve_with_restarts(n, seed, initial=initial)
         steps = f"{result.steps:,}"
         if result.restarts:
-            steps += f" ({result.restarts} lần khởi động lại)"
+            steps += f" ({plural(result.restarts, 'restart')})"
         stats = [
-            ("Kết quả", "Tìm thấy lời giải" if result.solved else "Chưa tìm thấy"),
-            ("Số bước", steps),
-            ("Thời gian tìm kiếm", f"{_ms(result.seconds)} ms"),
-            ("Cặp tấn công còn lại", str(result.remaining_conflicts)),
-            ("Heuristic, cùng seed" if other_key == "tabu" else "Chuẩn, cùng seed",
-             f"{other.steps:,} bước" + ("" if other.solved else " (chưa giải)")),
+            ("Result", "solved" if result.solved else "not solved"),
+            ("Steps", steps),
+            ("Search time", f"{_ms(result.seconds)} ms"),
+            ("Attacking pairs left", str(result.remaining_conflicts)),
+            ("Tabu heuristic, same seed" if other_key == "tabu" else "Standard, same seed",
+             plural(other.steps, "step") + ("" if other.solved else " (not solved)")),
         ]
         if fixed:
-            stats.insert(1, ("Bắt đầu từ", f"{len(fixed)} hậu bạn đặt"))
+            stats.insert(1, ("Start", f"{plural(len(fixed), 'queen')} placed by hand"))
         status = "solved" if result.solved else "unsolved"
         return _checked(Outcome(algorithm, n, status, result.placement, stats, MinConflictsPlayer(trace), fixed=fixed))
